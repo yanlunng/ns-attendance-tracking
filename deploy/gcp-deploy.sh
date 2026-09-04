@@ -30,6 +30,21 @@ ADMIN_PASSWORD="${ADMIN_PASSWORD:?Set ADMIN_PASSWORD to a strong password}"
 # to keep serving plain HTTP on the bare IP, same as before.
 DOMAIN="${DOMAIN:-}"
 
+# Optional: set TELEGRAM_BOT_TOKEN (from @BotFather) to enable marking
+# attendance via Telegram. Requires DOMAIN to be set too, since Telegram
+# only delivers webhooks to public HTTPS URLs. TELEGRAM_WEBHOOK_SECRET is
+# auto-generated if left unset — it just has to be unpredictable, no need
+# to choose it yourself.
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+TELEGRAM_WEBHOOK_SECRET="${TELEGRAM_WEBHOOK_SECRET:-}"
+if [[ -n "$TELEGRAM_BOT_TOKEN" && -z "$DOMAIN" ]]; then
+  echo "TELEGRAM_BOT_TOKEN is set but DOMAIN is not — Telegram needs a public HTTPS URL. Set DOMAIN too." >&2
+  exit 1
+fi
+if [[ -n "$TELEGRAM_BOT_TOKEN" && -z "$TELEGRAM_WEBHOOK_SECRET" ]]; then
+  TELEGRAM_WEBHOOK_SECRET="$(openssl rand -hex 24)"
+fi
+
 gcloud config set project "$PROJECT_ID"
 gcloud config set compute/zone "$ZONE"
 
@@ -101,6 +116,9 @@ if [[ -n "$DOMAIN" ]]; then
       -e SESSION_SECRET='${SESSION_SECRET}' \
       -e ADMIN_USERNAME='${ADMIN_USERNAME}' \
       -e ADMIN_PASSWORD='${ADMIN_PASSWORD}' \
+      -e PUBLIC_URL='https://${DOMAIN}' \
+      ${TELEGRAM_BOT_TOKEN:+-e TELEGRAM_BOT_TOKEN='${TELEGRAM_BOT_TOKEN}'} \
+      ${TELEGRAM_WEBHOOK_SECRET:+-e TELEGRAM_WEBHOOK_SECRET='${TELEGRAM_WEBHOOK_SECRET}'} \
       -v attendance-data:/app/data \
       --restart unless-stopped \
       ${IMAGE}

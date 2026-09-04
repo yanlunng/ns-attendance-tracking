@@ -13,4 +13,41 @@
     <button type="submit">Change password</button>
   </form>
 </div>
+
+<% if (telegramEnabled) { %>
+<h2>Telegram</h2>
+<div class="login-box">
+  <% if (telegramIsKah) { %>
+    <p class="notice"><%= telegramLinkCount %> of <%= telegramLinkCap %> Telegram accounts linked.</p>
+    <% if (telegramLinkCount > 0) { %>
+      <form method="post" action="/account/telegram/unlink">
+        <button type="submit">Unlink all</button>
+      </form>
+    <% } %>
+    <% if (telegramLinkCount < telegramLinkCap) { %>
+      <% if (telegramLinkCode) { %>
+        <p>Send this to the bot: <code><%= telegramLinkCode %></code> as <code>/link <%= telegramLinkCode %></code></p>
+        <p class="hint">Codes are single-use and replaced each time you generate a new one.</p>
+      <% } %>
+      <form method="post" action="/account/telegram/link-code">
+        <button type="submit"><%= telegramLinkCode ? 'Generate a new code' : 'Link another Telegram account' %></button>
+      </form>
+    <% } %>
+  <% } else if (telegramLinkCount > 0) { %>
+    <p class="notice">This account is linked to Telegram.</p>
+    <form method="post" action="/account/telegram/unlink">
+      <button type="submit">Unlink Telegram</button>
+    </form>
+  <% } else { %>
+    <p>Link this account to mark attendance from Telegram.<% if (telegramAutoOffered) { %> (Optional — you can skip this.)<% } %></p>
+    <% if (telegramLinkCode) { %>
+      <p>Send this to the bot: <code><%= telegramLinkCode %></code> as <code>/link <%= telegramLinkCode %></code></p>
+      <p class="hint">Codes are single-use and replaced each time you generate a new one.</p>
+    <% } %>
+    <form method="post" action="/account/telegram/link-code">
+      <button type="submit"><%= telegramLinkCode ? 'Generate a new code' : 'Get linking code' %></button>
+    </form>
+  <% } %>
+</div>
+<% } %>
 <%- include('partials/footer') %>

@@ -61,6 +61,21 @@ raw.exec(`
     is_staging INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS telegram_sessions (
+    chat_id INTEGER PRIMARY KEY,
+    state TEXT NOT NULL,
+    data TEXT NOT NULL DEFAULT '{}',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS telegram_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    chat_id INTEGER NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_telegram_links_user_id ON telegram_links(user_id);
 `);
 
 // Additive, idempotent migrations for columns introduced after the tables
@@ -85,7 +100,19 @@ addColumnIfMissing('roster', 'outfield_slot', 'TEXT');
 addColumnIfMissing('users', 'needs_password', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'must_change_password', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'roster_id', 'INTEGER REFERENCES roster(id) ON DELETE CASCADE');
+addColumnIfMissing('users', 'telegram_link_code', 'TEXT');
 raw.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_roster_id ON users(roster_id) WHERE roster_id IS NOT NULL');
+
+// Superseded by the telegram_links table (which supports multiple linked
+// chats per user, needed for KAH role accounts) — drop the old 1:1 column
+// if an earlier local run of this feature created it.
+{
+  const cols = raw.prepare('PRAGMA table_info(users)').all();
+  if (cols.some((c) => c.name === 'telegram_chat_id')) {
+    raw.exec('DROP INDEX IF EXISTS idx_users_telegram_chat_id');
+    raw.exec('ALTER TABLE users DROP COLUMN telegram_chat_id');
+  }
+}
 
 // attendance_submissions' status set/columns changed after it first shipped
 // (added mc/outpro, off_period/off_time, approval workflow, attachments).
@@ -197,5 +224,11 @@ function bootstrapKahRoles() {
 bootstrapAdmin();
 bootstrapKahRoles();
 
+const KAH_USERNAMES = new Set(KAH_ROLES.map((r) => r.username));
+function isKahUsername(username) {
+  return KAH_USERNAMES.has(username);
+}
+
 module.exports = db;
 module.exports.KAH_ROLES = KAH_ROLES;
+module.exports.isKahUsername = isKahUsername;

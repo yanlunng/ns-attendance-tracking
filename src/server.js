@@ -15,6 +15,8 @@ const approvalsRoutes = require('./routes/approvals');
 const accountRoutes = require('./routes/account');
 const myAttendanceRoutes = require('./routes/myAttendance');
 const outfieldRoutes = require('./routes/outfield');
+const telegramRoutes = require('./routes/telegram');
+const telegramApi = require('./lib/telegramApi');
 
 const app = express();
 
@@ -64,6 +66,7 @@ app.use(approvalsRoutes);
 app.use(accountRoutes);
 app.use(myAttendanceRoutes);
 app.use(outfieldRoutes);
+app.use(telegramRoutes);
 
 app.use((req, res) => {
   res.status(404).render('error', { message: 'Page not found.' });
@@ -72,4 +75,16 @@ app.use((req, res) => {
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Attendance app listening on http://localhost:${port}`);
+
+  if (telegramApi.enabled()) {
+    const publicUrl = process.env.PUBLIC_URL;
+    if (!publicUrl) {
+      console.warn('[telegram] TELEGRAM_BOT_TOKEN is set but PUBLIC_URL is not — skipping webhook registration.');
+    } else {
+      telegramApi
+        .setWebhook(`${publicUrl}/telegram/webhook`, process.env.TELEGRAM_WEBHOOK_SECRET)
+        .then(() => console.log(`[telegram] Webhook registered at ${publicUrl}/telegram/webhook`))
+        .catch((err) => console.error('[telegram] Failed to register webhook:', err.message));
+    }
+  }
 });

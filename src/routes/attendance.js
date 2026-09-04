@@ -7,10 +7,9 @@ const { requireLogin, blockSelfRole } = require('../auth');
 const { isWorkingDay } = require('../lib/workingDays');
 const { getCycleRange } = require('../lib/settings');
 const { activeRosterForDate, getPhaseStagger } = require('../lib/roster');
+const { submitOne } = require('../lib/attendanceSubmit');
 
 const router = express.Router();
-const OFF_PERIODS = ['AM', 'PM', 'TIME'];
-const STATUSES = ['present', 'off', 'mc', 'outpro'];
 
 const attachmentsDir = path.join(__dirname, '..', '..', 'data', 'attachments');
 if (!fs.existsSync(attachmentsDir)) fs.mkdirSync(attachmentsDir, { recursive: true });
@@ -88,42 +87,22 @@ router.post('/attendance', requireLogin, blockSelfRole, (req, res) => {
   }
 
   const roster = activeRosterForDate(date);
-  const upsert = db.prepare(`
-    INSERT INTO attendance_submissions
-      (date, roster_id, user_id, status, off_period, off_time, approval_status, remarks, submitted_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    ON CONFLICT(date, roster_id, user_id) DO UPDATE SET
-      status = excluded.status,
-      off_period = excluded.off_period,
-      off_time = excluded.off_time,
-      approval_status = excluded.approval_status,
-      approved_by = NULL,
-      approved_at = NULL,
-      remarks = excluded.remarks,
-      submitted_at = datetime('now')
-  `);
 
   const tx = db.transaction(() => {
     for (const person of roster) {
       const status = req.body[`status_${person.id}`];
       if (!status) continue; // person left unmarked this submission
-      if (!STATUSES.includes(status)) continue;
-      if (status === 'outpro' && !['admin', 'editor'].includes(req.session.user.role)) continue;
 
-      let offPeriod = null;
-      let offTime = null;
-      if (status === 'off') {
-        offPeriod = req.body[`off_period_${person.id}`];
-        if (!OFF_PERIODS.includes(offPeriod)) continue; // required, invalid submission for this person — skip
-        if (offPeriod === 'TIME') {
-          offTime = (req.body[`off_time_${person.id}`] || '').trim();
-          if (!offTime) continue; // time required for Time-off, skip if missing
-        }
-      }
-
-      const approvalStatus = status === 'off' || status === 'outpro' ? 'pending' : 'approved';
-      const remarks = (req.body[`remarks_${person.id}`] || '').trim() || null;
-      upsert.run(date, person.id, req.session.user.id, status, offPeriod, offTime, approvalStatus, remarks);
+      submitOne({
+        date,
+        rosterId: person.id,
+        submitterId: req.session.user.id,
+        submitterRole: req.session.user.role,
+        status,
+        offPeriod: req.body[`off_period_${person.id}`],
+        offTime: req.body[`off_time_${person.id}`],
+        remarks: req.body[`remarks_${person.id}`],
+      }); // per-person validation failures (e.g. missing off period) are silently skipped, same as before
     }
   });
   tx();

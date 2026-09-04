@@ -97,6 +97,11 @@ router.post('/roster/upload', requireAdmin, upload.single('file'), async (req, r
     if (created.length > 0) req.session.freshCredentials = created;
     if (skipped.length > 0) req.session.skippedAccounts = skipped;
 
+    // Telegram links are cycle-scoped, not permanent identity — wipe them on
+    // every roster reset so no chat_id is ever carried across cycles.
+    db.exec('DELETE FROM telegram_links');
+    db.exec('UPDATE users SET telegram_link_code = NULL');
+
     const suffix = mode === 'replace' && removed > 0 ? `&removed=${removed}` : '';
     res.redirect(`/roster?imported=${imported}${suffix}`);
   } catch (err) {
