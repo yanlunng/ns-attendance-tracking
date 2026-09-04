@@ -72,6 +72,30 @@ function vacateConfirmedAbsent() {
 }
 
 /**
+ * Anyone sitting in a staging pool (Unassigned/HQ/DVR) whose group_code no
+ * longer matches that pool's own group — e.g. their group was reclassified
+ * to HQ/DVR after they were last auto-sorted into their old group's pool —
+ * gets reset so the normal auto-assign step picks them up into the correct
+ * pool. Deliberate Fire Unit slot placements (is_staging = 0) are never
+ * touched here, regardless of group changes.
+ */
+function reconcileStaleStagingAssignments() {
+  const stale = db
+    .prepare(
+      `SELECT r.id FROM roster r
+       JOIN outfield_sections s ON s.id = r.outfield_section_id
+       WHERE s.is_staging = 1 AND s.group_code IS NOT r.group_code`
+    )
+    .all();
+  if (stale.length === 0) return;
+  const ids = stale.map((r) => r.id);
+  const placeholders = ids.map(() => '?').join(',');
+  db.prepare(
+    `UPDATE roster SET outfield_section_id = NULL, outfield_slot = NULL WHERE id IN (${placeholders})`
+  ).run(...ids);
+}
+
+/**
  * Eligible for outfield planning: active, not Deferred, not ICT Cancelled,
  * belongs to the given group, hasn't started an approved Outpro at any
  * point this cycle, and isn't confirmed absent for the whole outfield window.
@@ -119,6 +143,7 @@ function groupPool(sectionId, allPeople) {
  */
 function getBoard(groupCode) {
   vacateConfirmedAbsent();
+  reconcileStaleStagingAssignments();
 
   const isHqOrDvr = HQ_DVR_GROUPS.includes(groupCode);
   const platoons = ensureGroupStructure(groupCode);
