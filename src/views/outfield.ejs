@@ -7,13 +7,63 @@
   <% }) %>
 </div>
 
+<% if (group === 'KAH') { %>
+  <p class="hint">
+    Named leadership appointments (e.g. Battery Commander) that don't fit a Fire Unit role — this
+    group rarely needs full Outfield Designation, so add only the specific people/roles that
+    actually matter. Search picks from the whole roster, not just KAH — e.g. someone classified
+    RBS can still be designated BC here without affecting their RBS assignment.
+  </p>
+  <% if (kahError) { %><p class="error"><%= kahError %></p><% } %>
+
+  <table class="attendance-table">
+    <thead><tr><th>Name</th><th>Rank</th><th>Role</th><th></th></tr></thead>
+    <tbody>
+      <% kahDesignations.forEach(d => { %>
+      <tr>
+        <td data-label="Name"><%= d.name %></td>
+        <td data-label="Rank"><%= d.ref_id || '' %></td>
+        <td data-label="Role"><%= d.role_text %></td>
+        <td>
+          <% if (canEdit) { %>
+          <form method="post" action="/outfield/kah/<%= d.id %>/remove" class="inline">
+            <button type="submit" class="link-btn">Remove</button>
+          </form>
+          <% } %>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% if (kahDesignations.length === 0) { %><p class="empty">Nobody designated yet.</p><% } %>
+
+  <% if (canEdit) { %>
+  <div class="add-exception">
+    <form method="post" action="/outfield/kah/add" id="kah-add-form">
+      <label>Person <input type="text" id="kah-search-input" placeholder="Type a name…" autocomplete="off" /></label>
+      <input type="hidden" name="rosterId" id="kah-selected-roster-id" />
+      <div id="kah-search-results" class="search-results"></div>
+      <label>Role <input type="text" name="roleText" placeholder="e.g. BC" required /></label>
+      <button type="submit">Add</button>
+    </form>
+  </div>
+  <script>
+    window.FULL_ROSTER = <%- JSON.stringify(fullRoster.map(p => ({ id: p.id, name: p.name, ref_id: p.ref_id || '' }))) %>;
+  </script>
+  <script src="/outfield-kah.js"></script>
+  <% } %>
+
+<% } else { %>
+
 <p class="hint">
   <% if (!board.hasStructure) { %>
     No platoon/section structure has been defined for <%= group %> yet — everyone eligible is
     listed below, ready for when one is added.
   <% } %>
   HQ and DVR are shown as a shared pool at the bottom of every group's board, since they're the
-  natural source of spares/replacements regardless of which group you're organizing.
+  natural source of spares/replacements regardless of which group you're organizing. Anyone marked
+  <span class="outfield-off-tag">OFF</span> has an approved Off/MC on one of the configured outfield
+  dates (set on the Roster page) — they stay visible but can't be dragged into a Fire Unit slot.
   <% if (canEdit) { %>
     Drag a card into a slot to assign them. Dropping onto an occupied slot bounces the previous
     person back to their own group's pool. Rank and name shown together.
@@ -25,6 +75,7 @@
 <div class="outfield-board" data-group="<%= group %>">
   <% board.platoons.forEach(platoon => { %>
     <h2><%= platoon.name %></h2>
+    <% if (platoon.sections) { %>
     <div class="outfield-platoon">
       <% platoon.sections.forEach(section => { %>
         <div class="outfield-section-card">
@@ -34,7 +85,7 @@
               <span class="slot-label"><%= slot %></span>
               <div class="outfield-dropzone outfield-dropzone-slot" data-section-id="<%= section.id %>" data-slot="<%= slot %>">
                 <% if (section.slots[slot]) { %>
-                  <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= section.slots[slot].id %>"><%= section.slots[slot].ref_id || '' %> <%= section.slots[slot].name %></div>
+                  <div class="outfield-card<%= section.slots[slot].isOffOutfield ? ' outfield-card-off' : '' %>" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= section.slots[slot].id %>"><%= section.slots[slot].ref_id || '' %> <%= section.slots[slot].name %><% if (section.slots[slot].isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
                 <% } %>
               </div>
             </div>
@@ -44,7 +95,7 @@
               <span class="slot-label"><%= slot %></span>
               <div class="outfield-dropzone outfield-dropzone-slot" data-section-id="<%= section.id %>" data-slot="<%= slot %>">
                 <% if (section.slots[slot]) { %>
-                  <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= section.slots[slot].id %>"><%= section.slots[slot].ref_id || '' %> <%= section.slots[slot].name %></div>
+                  <div class="outfield-card<%= section.slots[slot].isOffOutfield ? ' outfield-card-off' : '' %>" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= section.slots[slot].id %>"><%= section.slots[slot].ref_id || '' %> <%= section.slots[slot].name %><% if (section.slots[slot].isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
                 <% } %>
               </div>
             </div>
@@ -52,6 +103,18 @@
         </div>
       <% }) %>
     </div>
+    <% } else { %>
+    <div class="outfield-staging">
+      <div class="outfield-pool">
+        <h3><%= platoon.pool.name %> (<%= platoon.pool.people.length %>)</h3>
+        <div class="outfield-dropzone" data-section-id="<%= platoon.pool.id %>" data-slot="">
+          <% platoon.pool.people.forEach(p => { %>
+            <div class="outfield-card<%= p.isOffOutfield ? ' outfield-card-off' : '' %>" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %><% if (p.isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+    <% } %>
   <% }) %>
 
   <% if (board.ownUnassigned) { %>
@@ -60,7 +123,7 @@
         <h3><%= board.ownUnassigned.name %> (<%= board.ownUnassigned.people.length %>)</h3>
         <div class="outfield-dropzone" data-section-id="<%= board.ownUnassigned.id %>" data-slot="">
           <% board.ownUnassigned.people.forEach(p => { %>
-            <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %></div>
+            <div class="outfield-card<%= p.isOffOutfield ? ' outfield-card-off' : '' %>" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %><% if (p.isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
           <% }) %>
         </div>
       </div>
@@ -73,7 +136,7 @@
         <h3><%= board.standby.name %> (<%= board.standby.people.length %>)</h3>
         <div class="outfield-dropzone" data-section-id="<%= board.standby.id %>" data-slot="">
           <% board.standby.people.forEach(p => { %>
-            <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %></div>
+            <div class="outfield-card<%= p.isOffOutfield ? ' outfield-card-off' : '' %>" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %><% if (p.isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
           <% }) %>
         </div>
       </div>
@@ -86,7 +149,7 @@
       <h3>HQ (<%= board.hq.people.length %>)</h3>
       <div class="outfield-dropzone" data-section-id="<%= board.hq.id %>" data-slot="">
         <% board.hq.people.forEach(p => { %>
-          <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %></div>
+          <div class="outfield-card<%= p.isOffOutfield ? ' outfield-card-off' : '' %>" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %><% if (p.isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
         <% }) %>
       </div>
     </div>
@@ -94,7 +157,7 @@
       <h3>DVR (<%= board.dvr.people.length %>)</h3>
       <div class="outfield-dropzone" data-section-id="<%= board.dvr.id %>" data-slot="">
         <% board.dvr.people.forEach(p => { %>
-          <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %></div>
+          <div class="outfield-card<%= p.isOffOutfield ? ' outfield-card-off' : '' %>" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %><% if (p.isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
         <% }) %>
       </div>
     </div>
@@ -103,5 +166,6 @@
 
 <% if (canEdit) { %>
 <script src="/outfield.js"></script>
+<% } %>
 <% } %>
 <%- include('partials/footer') %>

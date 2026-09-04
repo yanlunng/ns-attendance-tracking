@@ -77,6 +77,30 @@ raw.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   CREATE INDEX IF NOT EXISTS idx_telegram_links_user_id ON telegram_links(user_id);
+
+  CREATE TABLE IF NOT EXISTS outfield_dates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT UNIQUE NOT NULL,
+    going_platoon TEXT NOT NULL CHECK (going_platoon IN ('Platoon 1', 'Platoon 2')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS kah_designations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    roster_id INTEGER NOT NULL REFERENCES roster(id) ON DELETE CASCADE,
+    role_text TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS report_confirmations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    line TEXT NOT NULL,
+    confirmed_by INTEGER NOT NULL REFERENCES users(id),
+    confirmed_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(date, line)
+  );
 `);
 
 // Additive, idempotent migrations for columns introduced after the tables
@@ -154,6 +178,42 @@ if (needsSubmissionsRebuild()) {
            'approved',
            remarks, submitted_at
     FROM attendance_submissions_old
+  `);
+  raw.exec('DROP TABLE attendance_submissions_old');
+}
+
+// 'FULL' (a whole-day off, used for the outfield auto-off fill) was added to
+// off_period after the CHECK constraint first shipped — same rebuild-in-place
+// approach as above, since SQLite can't relax a CHECK constraint directly.
+function needsFullOffPeriodSupport() {
+  const row = raw.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'attendance_submissions'").get();
+  return !!row && !row.sql.includes('FULL');
+}
+
+if (needsFullOffPeriodSupport()) {
+  raw.exec('ALTER TABLE attendance_submissions RENAME TO attendance_submissions_old');
+  raw.exec(`
+    CREATE TABLE attendance_submissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      roster_id INTEGER NOT NULL REFERENCES roster(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status TEXT NOT NULL CHECK (status IN ('present', 'off', 'mc', 'outpro')),
+      off_period TEXT CHECK (off_period IN ('AM', 'PM', 'TIME', 'FULL') OR off_period IS NULL),
+      off_time TEXT,
+      off_time_end TEXT,
+      approval_status TEXT NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('pending', 'approved', 'rejected')),
+      approved_by INTEGER REFERENCES users(id),
+      approved_at TEXT,
+      attachment_path TEXT,
+      remarks TEXT,
+      submitted_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(date, roster_id, user_id)
+    )
+  `);
+  raw.exec(`
+    INSERT INTO attendance_submissions
+    SELECT * FROM attendance_submissions_old
   `);
   raw.exec('DROP TABLE attendance_submissions_old');
 }

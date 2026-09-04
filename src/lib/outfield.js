@@ -1,5 +1,4 @@
 const db = require('../db');
-const { getSetting } = require('./settings');
 
 const HQ_DVR_GROUPS = ['HQ', 'DVR'];
 
@@ -28,6 +27,16 @@ const PLATOON_STRUCTURE = {
     ],
     standby: true,
   },
+  // Roles TBD — for now just a free-flow pool per platoon (no fixed slots),
+  // since PCP isn't a real roster group_code and needs its own way to add
+  // specific people (not yet built).
+  PCP: {
+    coreSlots: [],
+    spareSlots: [],
+    flatPool: true,
+    platoons: [{ name: 'Platoon 1' }, { name: 'Platoon 2' }],
+    standby: false,
+  },
 };
 
 /** group/platoon may legitimately be null — "IS" compares null-safely. */
@@ -49,6 +58,17 @@ function ensureGroupStructure(groupCode) {
   const structure = PLATOON_STRUCTURE[groupCode];
   if (!structure) return { platoons: [], standbySection: null };
 
+  if (structure.flatPool) {
+    const platoons = structure.platoons.map((platoon, i) => ({
+      name: platoon.name,
+      pool: getOrCreateSection(groupCode, platoon.name, platoon.name, i, true),
+    }));
+    const standbySection = structure.standby
+      ? getOrCreateSection(groupCode, null, 'Standby', 9999, true)
+      : null;
+    return { platoons, standbySection };
+  }
+
   let sortOrder = 0;
   const platoons = structure.platoons.map((platoon) => ({
     name: platoon.name,
@@ -65,33 +85,25 @@ function ensureGroupStructure(groupCode) {
 }
 
 /**
- * Roster IDs confirmed absent for the whole outfield window: an *approved*
- * Off or MC (pending doesn't count — only approved is "definitely") landing
- * on any day within it. Returns an empty set if the window isn't configured.
+ * Roster IDs confirmed absent for the outfield exercise: an *approved* Off
+ * or MC (pending doesn't count — only approved is "definitely") landing on
+ * any of the configured outfield dates. Used only to flag them on the board
+ * (dimmed, not draggable into a real slot) — they still appear normally
+ * everywhere else, per the exercise being multi-date with different platoons
+ * going each time.
  */
 function getConfirmedAbsentIds() {
-  const start = getSetting('outfield_start_date');
-  const end = getSetting('outfield_end_date');
-  if (!start || !end) return new Set();
+  const dates = db.prepare('SELECT date FROM outfield_dates').all().map((d) => d.date);
+  if (dates.length === 0) return new Set();
 
+  const placeholders = dates.map(() => '?').join(',');
   const rows = db
     .prepare(
       `SELECT DISTINCT roster_id FROM attendance_submissions
-       WHERE status IN ('off', 'mc') AND approval_status = 'approved' AND date BETWEEN ? AND ?`
+       WHERE status IN ('off', 'mc') AND approval_status = 'approved' AND date IN (${placeholders})`
     )
-    .all(start, end);
+    .all(...dates);
   return new Set(rows.map((r) => r.roster_id));
-}
-
-/** Pulls anyone now confirmed-absent out of whatever slot they're holding, so it visibly opens up. */
-function vacateConfirmedAbsent() {
-  const confirmedAbsent = getConfirmedAbsentIds();
-  if (confirmedAbsent.size === 0) return;
-  const ids = [...confirmedAbsent];
-  const placeholders = ids.map(() => '?').join(',');
-  db.prepare(
-    `UPDATE roster SET outfield_section_id = NULL, outfield_slot = NULL WHERE id IN (${placeholders})`
-  ).run(...ids);
 }
 
 /**
@@ -121,11 +133,12 @@ function reconcileStaleStagingAssignments() {
 /**
  * Eligible for outfield planning: active, not Deferred, not ICT Cancelled,
  * belongs to the given group, hasn't started an approved Outpro at any
- * point this cycle, and isn't confirmed absent for the whole outfield window.
+ * point this cycle. Confirmed-absent people are still included (they show
+ * on the board, dimmed) — see getConfirmedAbsentIds.
  */
 function eligibleRosterForGroups(groupCodes) {
   const placeholders = groupCodes.map(() => '?').join(',');
-  const rows = db
+  return db
     .prepare(
       `SELECT * FROM roster
        WHERE active = 1 AND is_deferred = 0 AND is_ict_cancelled = 0 AND group_code IN (${placeholders})
@@ -135,9 +148,6 @@ function eligibleRosterForGroups(groupCodes) {
        ORDER BY name COLLATE NOCASE`
     )
     .all(...groupCodes);
-
-  const confirmedAbsent = getConfirmedAbsentIds();
-  return confirmedAbsent.size ? rows.filter((r) => !confirmedAbsent.has(r.id)) : rows;
 }
 
 function autoAssignUnplaced(people, section) {
@@ -165,13 +175,13 @@ function groupPool(sectionId, allPeople) {
  * "own Unassigned" pool would just repeat it.
  */
 function getBoard(groupCode) {
-  vacateConfirmedAbsent();
   reconcileStaleStagingAssignments();
 
   const isHqOrDvr = HQ_DVR_GROUPS.includes(groupCode);
   const structure = PLATOON_STRUCTURE[groupCode];
   const { platoons, standbySection } = ensureGroupStructure(groupCode);
   const allSlots = structure ? [...structure.coreSlots, ...structure.spareSlots] : [];
+  const confirmedAbsent = getConfirmedAbsentIds();
 
   const hqSection = getOrCreateSection('HQ', null, 'Unassigned', 0, true);
   const dvrSection = getOrCreateSection('DVR', null, 'Unassigned', 1, true);
@@ -193,7 +203,10 @@ function getBoard(groupCode) {
     autoAssignUnplaced(ownPeople, ownSection);
   }
 
-  const allPeople = [...hqDvrPeople, ...ownPeople];
+  const allPeople = [...hqDvrPeople, ...ownPeople].map((p) => ({
+    ...p,
+    isOffOutfield: confirmedAbsent.has(p.id),
+  }));
 
   function sectionView(section) {
     const inSection = groupPool(section.id, allPeople);
@@ -211,7 +224,11 @@ function getBoard(groupCode) {
       : null,
     hq: { id: hqSection.id, name: 'HQ', people: groupPool(hqSection.id, allPeople) },
     dvr: { id: dvrSection.id, name: 'DVR', people: groupPool(dvrSection.id, allPeople) },
-    platoons: platoons.map((p) => ({ name: p.name, sections: p.sections.map(sectionView) })),
+    platoons: platoons.map((p) =>
+      p.sections
+        ? { name: p.name, sections: p.sections.map(sectionView) }
+        : { name: p.name, pool: { id: p.pool.id, name: p.pool.name, people: groupPool(p.pool.id, allPeople) } }
+    ),
     coreSlots: structure ? structure.coreSlots : [],
     spareSlots: structure ? structure.spareSlots : [],
     hasStructure: !!structure,
@@ -231,6 +248,10 @@ function assignPerson(personId, sectionId, slot) {
   const structure = PLATOON_STRUCTURE[section.group_code];
   const allSlots = structure ? [...structure.coreSlots, ...structure.spareSlots] : [];
   const normalizedSlot = section.is_staging ? null : slot && allSlots.includes(slot) ? slot : null;
+
+  if (normalizedSlot && getConfirmedAbsentIds().has(personId)) {
+    throw new Error('This person is confirmed absent for an outfield date and cannot be assigned to a Fire Unit slot.');
+  }
 
   const tx = db.transaction(() => {
     if (normalizedSlot) {
@@ -254,4 +275,16 @@ function assignPerson(personId, sectionId, slot) {
   tx();
 }
 
-module.exports = { getBoard, assignPerson, eligibleRosterForGroups };
+// Tabs shown on the Outfield Designation page — deliberately separate from
+// rosterImport's GROUP_CODES (which still includes KAH for roster
+// classification/Battery Establishment purposes). PCP isn't a real roster
+// group_code yet (see PLATOON_STRUCTURE.PCP). "Others" isn't a real group_code
+// either — getBoard('HQ') and getBoard('DVR') already return the identical
+// combined HQ+DVR view (see isHqOrDvr above), so the route maps this tab to
+// getBoard('HQ') rather than having two duplicate tabs. "KAH" isn't a
+// grid/slot board at all — it's a free-form named-appointment list (any
+// roster person + free-text role), handled entirely in routes/outfield.js
+// via lib/kahDesignations.js, not through getBoard/PLATOON_STRUCTURE.
+const OUTFIELD_GROUPS = ['PCP', 'RBS', 'PSTAR', 'FP', 'Others', 'KAH'];
+
+module.exports = { getBoard, assignPerson, eligibleRosterForGroups, OUTFIELD_GROUPS };

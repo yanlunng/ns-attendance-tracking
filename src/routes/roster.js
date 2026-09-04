@@ -8,6 +8,7 @@ const { upsertRoster } = require('../lib/rosterUpsert');
 const { provisionSelfAccounts } = require('../lib/selfAccounts');
 const { getSetting, setSetting, getCountWeekends } = require('../lib/settings');
 const { nextMonday } = require('../lib/workingDays');
+const { listOutfieldDates, upsertOutfieldDate, removeOutfieldDate } = require('../lib/outfieldDates');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -29,8 +30,7 @@ function cyclePageData() {
     cycleStart: getSetting('cycle_start_date') || '',
     cycleEnd: getSetting('cycle_end_date') || '',
     mainBodyStart: getSetting('mainbody_phase_start_date') || '',
-    outfieldStart: getSetting('outfield_start_date') || '',
-    outfieldEnd: getSetting('outfield_end_date') || '',
+    outfieldDates: listOutfieldDates(),
     countWeekends: getCountWeekends(),
   };
 }
@@ -114,15 +114,20 @@ router.post('/roster/settings/weekends', requireAdmin, (req, res) => {
   res.redirect('/roster');
 });
 
-router.post('/roster/settings/outfield-dates', requireAdmin, (req, res) => {
-  const { outfield_start_date: start, outfield_end_date: end } = req.body;
+router.post('/roster/outfield-dates/add', requireAdmin, (req, res) => {
+  const { date, going_platoon: goingPlatoon } = req.body;
 
-  if (start && !/^\d{4}-\d{2}-\d{2}$/.test(start)) return renderRosterError(res, 'Outfield start date is not valid.');
-  if (end && !/^\d{4}-\d{2}-\d{2}$/.test(end)) return renderRosterError(res, 'Outfield end date is not valid.');
-  if (start && end && start > end) return renderRosterError(res, 'Outfield start date must be on or before the end date.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return renderRosterError(res, 'Outfield date is not valid.');
+  if (!['Platoon 1', 'Platoon 2'].includes(goingPlatoon)) {
+    return renderRosterError(res, 'Select which platoon is going out for this date.');
+  }
 
-  setSetting('outfield_start_date', start || '');
-  setSetting('outfield_end_date', end || '');
+  upsertOutfieldDate(date, goingPlatoon, req.session.user.id);
+  res.redirect('/roster');
+});
+
+router.post('/roster/outfield-dates/:id/remove', requireAdmin, (req, res) => {
+  removeOutfieldDate(req.params.id);
   res.redirect('/roster');
 });
 

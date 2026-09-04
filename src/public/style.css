@@ -198,6 +198,20 @@ form.inline { display: inline; }
   user-select: none;
 }
 .outfield-card-dragging { opacity: 0.3; }
+.outfield-card-off {
+  opacity: 0.5;
+  background: repeating-linear-gradient(45deg, var(--card), var(--card) 8px, #f3f4f6 8px, #f3f4f6 16px);
+}
+.outfield-off-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #b91c1c;
+  border: 1px solid #b91c1c;
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 4px;
+}
 .outfield-ghost {
   position: fixed;
   z-index: 1000;

@@ -134,14 +134,40 @@
 <div class="upload-box">
   <h2>Outfield exercise dates</h2>
   <p class="hint">
-    Anyone with an <strong>approved</strong> Off or MC covering any day in this range is excluded
-    from Outfield Designation entirely — pulled out of any slot they're holding too. Pending
-    requests don't count; only approved is treated as definite. Leave blank to disable.
+    Each outfield date is a single day where one platoon (RBS + FP together, excluding FP's PSTAR
+    sub-team) goes out to the field — the other platoon is automatically marked Off (approved,
+    no review needed) for that date, unless they already have a real status recorded for it, which
+    always wins. On the Outfield Designation board, anyone with an <strong>approved</strong> Off or
+    MC on any of these dates stays visible in their slot/pool but is dimmed and can't be dragged
+    into a Fire Unit slot. Add as many dates as needed.
   </p>
-  <form method="post" action="/roster/settings/outfield-dates">
-    <label>Outfield start date <input type="date" name="outfield_start_date" value="<%= outfieldStart %>" /></label>
-    <label>Outfield end date <input type="date" name="outfield_end_date" value="<%= outfieldEnd %>" /></label>
-    <button type="submit">Save</button>
+  <% if (outfieldDates.length > 0) { %>
+    <table class="attendance-table">
+      <thead><tr><th>Date</th><th>Going</th><th></th></tr></thead>
+      <tbody>
+        <% outfieldDates.forEach(d => { %>
+        <tr>
+          <td data-label="Date"><%= d.date %></td>
+          <td data-label="Going"><%= d.going_platoon %></td>
+          <td>
+            <form method="post" action="/roster/outfield-dates/<%= d.id %>/remove" class="inline">
+              <button type="submit" class="link-btn">Remove</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+  <form method="post" action="/roster/outfield-dates/add">
+    <label>Date <input type="date" name="date" required /></label>
+    <label>Going out
+      <select name="going_platoon" required>
+        <option value="Platoon 1">Platoon 1</option>
+        <option value="Platoon 2">Platoon 2</option>
+      </select>
+    </label>
+    <button type="submit">Add date</button>
   </form>
 </div>
 
