@@ -3,7 +3,7 @@ const path = require('path');
 const express = require('express');
 const session = require('express-session');
 
-require('./db'); // ensures schema + bootstrap admin run before requests arrive
+const db = require('./db'); // ensures schema + bootstrap admin run before requests arrive
 
 const authRoutes = require('./routes/auth');
 const attendanceRoutes = require('./routes/attendance');
@@ -34,6 +34,18 @@ app.use(
 
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
+  next();
+});
+
+// Whoever logged in with a password an admin set on their behalf must
+// change it before touching anything else — checked fresh each request
+// since the session only carries id/username/role, not this flag.
+app.use((req, res, next) => {
+  if (!req.session.user) return next();
+  if (req.path === '/account' || req.path.startsWith('/account/') || req.path === '/logout') return next();
+
+  const user = db.prepare('SELECT must_change_password FROM users WHERE id = ?').get(req.session.user.id);
+  if (user && user.must_change_password) return res.redirect('/account?forced=1');
   next();
 });
 

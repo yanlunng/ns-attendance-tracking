@@ -83,6 +83,7 @@ addColumnIfMissing('roster', 'position_descr', 'TEXT');
 addColumnIfMissing('roster', 'outfield_section_id', 'INTEGER REFERENCES outfield_sections(id) ON DELETE SET NULL');
 addColumnIfMissing('roster', 'outfield_slot', 'TEXT');
 addColumnIfMissing('users', 'needs_password', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('users', 'must_change_password', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'roster_id', 'INTEGER REFERENCES roster(id) ON DELETE CASCADE');
 raw.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_roster_id ON users(roster_id) WHERE roster_id IS NOT NULL');
 
@@ -197,3 +198,4 @@ bootstrapAdmin();
 bootstrapKahRoles();
 
 module.exports = db;
+module.exports.KAH_ROLES = KAH_ROLES;

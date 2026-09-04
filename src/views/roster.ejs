@@ -83,6 +83,35 @@
 </div>
 
 <div class="upload-box">
+  <h2>Key Appointment Holder passwords</h2>
+  <p class="hint">
+    Set an initial password for BC, BSM, B2IC, PC, PS, P2IC, FPCom, RCom, or FU Com — whoever logs
+    in with a password you set here is required to change it before doing anything else.
+  </p>
+  <table class="attendance-table">
+    <thead><tr><th>Role</th><th>Level</th><th>Password</th><th></th></tr></thead>
+    <tbody>
+      <% kahAccounts.forEach(u => { %>
+      <tr>
+        <td data-label="Role"><%= u.username %></td>
+        <td data-label="Level"><%= u.role %></td>
+        <td data-label="Password">
+          <% if (u.needs_password) { %><span class="badge badge-warn">Not set</span><% } else { %><span class="badge badge-present">Set</span><% } %>
+        </td>
+        <td>
+          <form method="post" action="/users/<%= u.id %>/set-password" class="set-password-form">
+            <input type="hidden" name="returnTo" value="/roster" />
+            <input type="password" name="password" placeholder="new password" minlength="8" required />
+            <button type="submit"><%= u.needs_password ? 'Set password' : 'Reset password' %></button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<div class="upload-box">
   <h2>Weekend setting</h2>
   <p class="hint">
     When off, Saturdays/Sundays need no attendance marking anywhere in the app (this is the

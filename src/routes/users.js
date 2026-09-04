@@ -25,7 +25,7 @@ router.post('/users', requireAdmin, (req, res) => {
 
   try {
     const hash = bcrypt.hashSync(password, 10);
-    db.prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)').run(
+    db.prepare('INSERT INTO users (username, password_hash, role, must_change_password) VALUES (?, ?, ?, 1)').run(
       username.trim(),
       hash,
       ['admin', 'editor'].includes(role) ? role : 'user'
@@ -43,8 +43,10 @@ router.post('/users/:id/set-password', requireAdmin, (req, res) => {
     return res.status(400).render('users', { users: usersList(), error: 'Password must be at least 8 characters.' });
   }
   const hash = bcrypt.hashSync(password, 10);
-  db.prepare('UPDATE users SET password_hash = ?, needs_password = 0 WHERE id = ?').run(hash, req.params.id);
-  res.redirect('/users');
+  db.prepare(
+    'UPDATE users SET password_hash = ?, needs_password = 0, must_change_password = 1 WHERE id = ?'
+  ).run(hash, req.params.id);
+  res.redirect(req.body.returnTo || '/users');
 });
 
 router.post('/users/:id/delete', requireAdmin, (req, res) => {

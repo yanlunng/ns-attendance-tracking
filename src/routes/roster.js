@@ -10,9 +10,17 @@ const { nextMonday } = require('../lib/workingDays');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const KAH_USERNAMES = db.KAH_ROLES.map((r) => r.username);
 
 function rosterList() {
   return db.prepare('SELECT * FROM roster WHERE active = 1 ORDER BY name COLLATE NOCASE').all();
+}
+
+function kahAccountsList() {
+  const placeholders = KAH_USERNAMES.map(() => '?').join(',');
+  return db
+    .prepare(`SELECT id, username, role, needs_password FROM users WHERE username IN (${placeholders}) ORDER BY username`)
+    .all(...KAH_USERNAMES);
 }
 
 function cyclePageData() {
@@ -36,6 +44,7 @@ router.get('/roster', requireAdmin, (req, res) => {
     removed: req.query.removed || null,
     freshCredentials,
     skippedAccounts,
+    kahAccounts: kahAccountsList(),
     ...cyclePageData(),
   });
 });
@@ -49,6 +58,7 @@ router.post('/roster/upload', requireAdmin, upload.single('file'), async (req, r
       removed: null,
       freshCredentials: null,
       skippedAccounts: null,
+      kahAccounts: kahAccountsList(),
       ...cyclePageData(),
     });
 

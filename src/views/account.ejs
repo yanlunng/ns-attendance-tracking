@@ -1,5 +1,8 @@
 <%- include('partials/header') %>
 <h1>My Account</h1>
+<% if (forced && !saved) { %>
+  <p class="banner-warn">An admin set this account's password — please choose your own before continuing.</p>
+<% } %>
 <% if (error) { %><p class="error"><%= error %></p><% } %>
 <% if (saved) { %><p class="notice">Password changed.</p><% } %>
 
