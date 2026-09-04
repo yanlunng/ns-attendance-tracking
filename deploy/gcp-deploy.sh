@@ -78,8 +78,12 @@ echo "== Building and pushing image via Cloud Build =="
 gcloud builds submit --tag "$IMAGE" .
 
 echo "== Creating VM (ok if it already exists) =="
+# e2-micro is in GCP's permanent Always Free tier (one instance/month) in
+# us-west1/us-central1/us-east1 — this app's load is light enough to fit.
+# This only affects a fresh VM; an already-running VM needs a separate
+# resize (stop / set-machine-type / start), not just re-running this script.
 gcloud compute instances create "$VM_NAME" \
-  --machine-type=e2-small \
+  --machine-type=e2-micro \
   --image-family=cos-stable \
   --image-project=cos-cloud \
   --boot-disk-size=20GB \
