@@ -1,16 +1,33 @@
 const db = require('../db');
 const { getSetting } = require('./settings');
 
-const CORE_SLOTS = ['FU Commander', '2IC', 'Gunner 1', 'Gunner 2', 'Loader', 'Driver'];
-const SPARE_SLOTS = ['Spare 1', 'Spare 2'];
-const ALL_SLOTS = [...CORE_SLOTS, ...SPARE_SLOTS];
 const HQ_DVR_GROUPS = ['HQ', 'DVR'];
 
-// Platoon 1 / Platoon 2, each with 3 Fire Units — numbered continuously
-// across both platoons (Platoon 1: FU 1-3, Platoon 2: FU 4-6), not reset
-// per platoon.
+// RBS: Platoon 1 / Platoon 2, each with 3 Fire Units — numbered continuously
+// across both platoons (Platoon 1: FU 1-3, Platoon 2: FU 4-6).
+// FP: Platoon 1 / Platoon 2, each with its own FU 1-3 (numbering resets per
+// platoon) plus a PSTAR sub-team drawn from PSTAR personnel cross-attached
+// to FP — same 6-slot crew shape as an FU. Both groups also have one
+// group-wide Standby pool that isn't tied to either platoon.
 const PLATOON_STRUCTURE = {
-  RBS: { platoons: ['Platoon 1', 'Platoon 2'], sectionsPerPlatoon: 3, sectionLabel: 'Fire Unit' },
+  RBS: {
+    coreSlots: ['FU Commander', '2IC', 'Gunner 1', 'Gunner 2', 'Loader', 'Driver'],
+    spareSlots: ['Spare 1', 'Spare 2'],
+    platoons: [
+      { name: 'Platoon 1', sections: ['Fire Unit 1', 'Fire Unit 2', 'Fire Unit 3'] },
+      { name: 'Platoon 2', sections: ['Fire Unit 4', 'Fire Unit 5', 'Fire Unit 6'] },
+    ],
+    standby: true,
+  },
+  FP: {
+    coreSlots: ['Team Comd', '2IC', 'Member 1', 'Member 2', 'Member 3', 'Member 4'],
+    spareSlots: [],
+    platoons: [
+      { name: 'Platoon 1', sections: ['FU 1', 'FU 2', 'FU 3', 'PSTAR'] },
+      { name: 'Platoon 2', sections: ['FU 1', 'FU 2', 'FU 3', 'PSTAR'] },
+    ],
+    standby: true,
+  },
 };
 
 /** group/platoon may legitimately be null — "IS" compares null-safely. */
@@ -30,15 +47,21 @@ function getOrCreateSection(groupCode, platoon, name, sortOrder, isStaging) {
 
 function ensureGroupStructure(groupCode) {
   const structure = PLATOON_STRUCTURE[groupCode];
-  if (!structure) return [];
+  if (!structure) return { platoons: [], standbySection: null };
 
-  let fuNumber = 1;
-  return structure.platoons.map((platoonName) => ({
-    name: platoonName,
-    sections: Array.from({ length: structure.sectionsPerPlatoon }, () =>
-      getOrCreateSection(groupCode, platoonName, `${structure.sectionLabel} ${fuNumber}`, fuNumber++, false)
+  let sortOrder = 0;
+  const platoons = structure.platoons.map((platoon) => ({
+    name: platoon.name,
+    sections: platoon.sections.map((sectionName) =>
+      getOrCreateSection(groupCode, platoon.name, sectionName, sortOrder++, false)
     ),
   }));
+
+  const standbySection = structure.standby
+    ? getOrCreateSection(groupCode, null, 'Standby', 9999, true)
+    : null;
+
+  return { platoons, standbySection };
 }
 
 /**
@@ -146,7 +169,9 @@ function getBoard(groupCode) {
   reconcileStaleStagingAssignments();
 
   const isHqOrDvr = HQ_DVR_GROUPS.includes(groupCode);
-  const platoons = ensureGroupStructure(groupCode);
+  const structure = PLATOON_STRUCTURE[groupCode];
+  const { platoons, standbySection } = ensureGroupStructure(groupCode);
+  const allSlots = structure ? [...structure.coreSlots, ...structure.spareSlots] : [];
 
   const hqSection = getOrCreateSection('HQ', null, 'Unassigned', 0, true);
   const dvrSection = getOrCreateSection('DVR', null, 'Unassigned', 1, true);
@@ -173,7 +198,7 @@ function getBoard(groupCode) {
   function sectionView(section) {
     const inSection = groupPool(section.id, allPeople);
     const slots = {};
-    for (const slot of ALL_SLOTS) slots[slot] = inSection.find((p) => p.outfield_slot === slot) || null;
+    for (const slot of allSlots) slots[slot] = inSection.find((p) => p.outfield_slot === slot) || null;
     return { id: section.id, name: section.name, slots };
   }
 
@@ -181,12 +206,15 @@ function getBoard(groupCode) {
     ownUnassigned: ownSection
       ? { id: ownSection.id, name: `${groupCode} Unassigned`, people: groupPool(ownSection.id, allPeople) }
       : null,
+    standby: standbySection
+      ? { id: standbySection.id, name: `${groupCode} Standby`, people: groupPool(standbySection.id, allPeople) }
+      : null,
     hq: { id: hqSection.id, name: 'HQ', people: groupPool(hqSection.id, allPeople) },
     dvr: { id: dvrSection.id, name: 'DVR', people: groupPool(dvrSection.id, allPeople) },
     platoons: platoons.map((p) => ({ name: p.name, sections: p.sections.map(sectionView) })),
-    coreSlots: CORE_SLOTS,
-    spareSlots: SPARE_SLOTS,
-    hasStructure: !!PLATOON_STRUCTURE[groupCode],
+    coreSlots: structure ? structure.coreSlots : [],
+    spareSlots: structure ? structure.spareSlots : [],
+    hasStructure: !!structure,
   };
 }
 
@@ -200,7 +228,9 @@ function assignPerson(personId, sectionId, slot) {
   const section = db.prepare('SELECT * FROM outfield_sections WHERE id = ?').get(sectionId);
   if (!section) throw new Error('Unknown section.');
 
-  const normalizedSlot = section.is_staging ? null : slot && ALL_SLOTS.includes(slot) ? slot : null;
+  const structure = PLATOON_STRUCTURE[section.group_code];
+  const allSlots = structure ? [...structure.coreSlots, ...structure.spareSlots] : [];
+  const normalizedSlot = section.is_staging ? null : slot && allSlots.includes(slot) ? slot : null;
 
   const tx = db.transaction(() => {
     if (normalizedSlot) {
@@ -224,4 +254,4 @@ function assignPerson(personId, sectionId, slot) {
   tx();
 }
 
-module.exports = { getBoard, assignPerson, eligibleRosterForGroups, CORE_SLOTS, SPARE_SLOTS, ALL_SLOTS };
+module.exports = { getBoard, assignPerson, eligibleRosterForGroups };

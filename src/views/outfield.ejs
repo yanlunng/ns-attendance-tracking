@@ -67,6 +67,19 @@
     </div>
   <% } %>
 
+  <% if (board.standby) { %>
+    <div class="outfield-staging">
+      <div class="outfield-pool">
+        <h3><%= board.standby.name %> (<%= board.standby.people.length %>)</h3>
+        <div class="outfield-dropzone" data-section-id="<%= board.standby.id %>" data-slot="">
+          <% board.standby.people.forEach(p => { %>
+            <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %></div>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+  <% } %>
+
   <h2>HQ / DVR (shared)</h2>
   <div class="outfield-staging">
     <div class="outfield-pool">

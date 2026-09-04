@@ -19,8 +19,12 @@ const GROUP_CODES = [...SUBUNIT_GROUP_CODES, 'HQ', 'DVR'];
 // Position overrides Sub Unit 1 when it indicates a battery-wide functional
 // role rather than a specific fire unit's combat crew — e.g. Lim Sheng Long's
 // Sub Unit 1 says RBS, but his Position Descr ("DVR") means he's actually
-// battalion transport, not an RBS gun-crew member.
+// battalion transport, not an RBS gun-crew member. Likewise, FP (Fire
+// Platoon) is a cross-attachment that draws crew from both RBS and PSTAR —
+// their Sub Unit 1 still says RBS/PSTAR (their administrative home), but an
+// FP position means they're actually on FP's Outfield Designation roster.
 const DVR_POSITIONS = ['DVR', 'AFV DVR'];
+const FP_POSITIONS = ['FP TM COMD', 'FP TM 2IC', 'FP OPR'];
 const HQ_POSITIONS = [
   'ADMIN SUPVR',
   'SUP ASST(GE)',
@@ -82,6 +86,7 @@ function deriveGroup(subunit1Text, positionDescr) {
   const pos = String(positionDescr || '').toUpperCase().trim();
   if (DVR_POSITIONS.includes(pos)) return 'DVR';
   if (HQ_POSITIONS.includes(pos)) return 'HQ';
+  if (FP_POSITIONS.includes(pos)) return 'FP';
 
   if (!subunit1Text) return null;
   const upper = String(subunit1Text).toUpperCase();

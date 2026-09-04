@@ -2,8 +2,10 @@ const crypto = require('crypto');
 const db = require('../db');
 const telegramApi = require('./telegramApi');
 const { submitOne, OFF_PERIODS } = require('./attendanceSubmit');
-const { activeRosterForDate } = require('./roster');
+const { activeRosterForDate, filterRosterForEditor } = require('./roster');
 const { getCycleRange } = require('./settings');
+const { isWorkingDay } = require('./workingDays');
+const { buildWhatsappSummary } = require('./whatsappSummary');
 
 function todayStr() {
   const d = new Date();
@@ -74,7 +76,7 @@ async function startCmd(chatId) {
       '2. Go to "Change password" / My Account.\n' +
       '3. Copy the linking code shown there.\n' +
       '4. Send me: /link CODE\n\n' +
-      'Once linked, send /mark to record attendance.'
+      'Once linked, send /mark to record attendance, or /summary for a copy-paste strength report.'
   );
 }
 
@@ -143,6 +145,23 @@ function dateFromToken(token) {
   return /^\d{4}-\d{2}-\d{2}$/.test(token) ? token : null;
 }
 
+async function summaryCmd(chatId, text) {
+  const user = getLinkedUser(chatId);
+  if (!user) return telegramApi.sendMessage(chatId, "You're not linked yet. Send /link CODE from your account page first.");
+  if (user.role === 'self') return telegramApi.sendMessage(chatId, "This isn't available for your account — check My Attendance on the web app instead.");
+
+  const arg = text.replace('/summary', '').trim();
+  const date = arg ? dateFromToken(arg) : todayStr();
+  if (!date) return telegramApi.sendMessage(chatId, 'Usage: /summary or /summary YYYY-MM-DD');
+
+  if (!isWorkingDay(date)) {
+    return telegramApi.sendMessage(chatId, `${date} is a weekend — no attendance report is expected by default.`);
+  }
+
+  const report = buildWhatsappSummary(date);
+  return telegramApi.sendMessage(chatId, report, { parse_mode: undefined });
+}
+
 async function proceedAfterDate(chatId, user, date) {
   if (user.role === 'self') {
     if (!user.roster_id) {
@@ -167,10 +186,10 @@ async function handlePersonQuery(chatId, user, session, text) {
   const query = text.trim().toLowerCase();
   if (!query) return telegramApi.sendMessage(chatId, 'Type at least part of a name.');
 
-  const roster = activeRosterForDate(session.data.date);
+  const roster = filterRosterForEditor(activeRosterForDate(session.data.date), user.username);
   const matches = roster.filter((p) => p.name.toLowerCase().includes(query)).slice(0, 8);
   if (matches.length === 0) {
-    return telegramApi.sendMessage(chatId, 'No one matching that name is eligible for that date. Try another name, or /cancel.');
+    return telegramApi.sendMessage(chatId, "No one matching that name is eligible for that date (or isn't in your scope). Try another name, or /cancel.");
   }
 
   setSession(chatId, 'awaiting_person_pick', { ...session.data });
@@ -234,6 +253,7 @@ async function finalizeSubmission(chatId, user, data) {
     rosterId: data.rosterId,
     submitterId: user.id,
     submitterRole: user.role,
+    submitterUsername: user.username,
     status: data.status,
     offPeriod: data.offPeriod,
     offTime: data.offTime,
@@ -286,6 +306,7 @@ async function handleMessage(message) {
   }
   if (text.startsWith('/mark')) return markCmd(chatId);
   if (text.startsWith('/whoami')) return whoamiCmd(chatId);
+  if (text.startsWith('/summary')) return summaryCmd(chatId, text);
 
   const user = getLinkedUser(chatId);
   if (!user) return telegramApi.sendMessage(chatId, "You're not linked yet. Send /link CODE from your account page first.");
@@ -326,9 +347,9 @@ async function handleCallback(callbackQuery) {
 
   if (kind === 'person' && session.state === 'awaiting_person_pick') {
     const rosterId = Number(value);
-    const roster = activeRosterForDate(session.data.date);
+    const roster = filterRosterForEditor(activeRosterForDate(session.data.date), user.username);
     const person = roster.find((p) => p.id === rosterId);
-    if (!person) return telegramApi.sendMessage(chatId, 'That person is no longer eligible for that date. /cancel and try again.');
+    if (!person) return telegramApi.sendMessage(chatId, "That person is no longer eligible (or isn't in your scope). /cancel and try again.");
 
     setSession(chatId, 'awaiting_status', { ...session.data, rosterId, personName: person.name });
     return askStatus(chatId, user, session.data.date, person.name);
