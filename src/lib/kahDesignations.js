@@ -15,12 +15,21 @@ function addKahDesignation(rosterId, roleText) {
   const person = db.prepare('SELECT id FROM roster WHERE id = ? AND active = 1').get(rosterId);
   if (!person) throw new Error('Unknown or inactive roster person.');
 
-  const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM kah_designations').get().m;
-  db.prepare('INSERT INTO kah_designations (roster_id, role_text, sort_order) VALUES (?, ?, ?)').run(
-    rosterId,
-    roleText,
-    maxOrder + 1
-  );
+  const tx = db.transaction(() => {
+    const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM kah_designations').get().m;
+    db.prepare('INSERT INTO kah_designations (roster_id, role_text, sort_order) VALUES (?, ?, ?)').run(
+      rosterId,
+      roleText,
+      maxOrder + 1
+    );
+    // Pull them out of wherever they're placed elsewhere (RBS/FP/PCP/etc.) —
+    // a KAH designation replaces their other Outfield Designation slot rather
+    // than sitting alongside it. Removing the designation doesn't restore
+    // the old placement; they just reappear in their group's Unassigned pool
+    // next time that board loads.
+    db.prepare('UPDATE roster SET outfield_section_id = NULL, outfield_slot = NULL WHERE id = ?').run(rosterId);
+  });
+  tx();
 }
 
 function removeKahDesignation(id) {
