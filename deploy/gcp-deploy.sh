@@ -49,17 +49,26 @@ gcloud config set project "$PROJECT_ID"
 gcloud config set compute/zone "$ZONE"
 
 echo "== Enabling required APIs =="
-gcloud services enable compute.googleapis.com artifactregistry.googleapis.com
+gcloud services enable compute.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com
 
 echo "== Creating Artifact Registry repo (ok if it already exists) =="
 gcloud artifacts repositories create "$REPO_NAME" \
   --repository-format=docker --location="$REGION" || true
 
-gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+echo "== Ensuring Cloud Build can push to Artifact Registry =="
+PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+CLOUDBUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${CLOUDBUILD_SA}" \
+  --role="roles/artifactregistry.writer" \
+  --condition=None \
+  --quiet
 
-echo "== Building and pushing image =="
-docker build -t "$IMAGE" .
-docker push "$IMAGE"
+echo "== Building and pushing image via Cloud Build =="
+# Runs entirely inside Google's network (source is zipped and uploaded once,
+# then built and pushed server-side) — avoids Cloud Shell's own flaky
+# outbound connection to Artifact Registry that plain `docker push` hits.
+gcloud builds submit --tag "$IMAGE" .
 
 echo "== Creating VM (ok if it already exists) =="
 gcloud compute instances create "$VM_NAME" \
@@ -71,7 +80,6 @@ gcloud compute instances create "$VM_NAME" \
   --tags="$VM_NAME" || true
 
 echo "== Ensuring the VM can pull from Artifact Registry =="
-PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
 COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
