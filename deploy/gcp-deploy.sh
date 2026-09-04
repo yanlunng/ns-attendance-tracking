@@ -46,7 +46,31 @@ gcloud compute instances create "$VM_NAME" \
   --image-family=cos-stable \
   --image-project=cos-cloud \
   --boot-disk-size=20GB \
+  --scopes=cloud-platform \
   --tags="$VM_NAME" || true
+
+echo "== Ensuring the VM can pull from Artifact Registry =="
+PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${COMPUTE_SA}" \
+  --role="roles/artifactregistry.reader" \
+  --condition=None \
+  --quiet
+
+CURRENT_SCOPES=$(gcloud compute instances describe "$VM_NAME" --zone="$ZONE" --format='value(serviceAccounts[0].scopes)' 2>/dev/null || echo "")
+if [[ "$CURRENT_SCOPES" != *"cloud-platform"* ]]; then
+  echo "VM was created without cloud-platform scope — updating it (brief stop/start)..."
+  gcloud compute instances stop "$VM_NAME" --zone="$ZONE" --quiet
+  gcloud compute instances set-service-account "$VM_NAME" \
+    --zone="$ZONE" \
+    --service-account="$COMPUTE_SA" \
+    --scopes=cloud-platform
+  gcloud compute instances start "$VM_NAME" --zone="$ZONE" --quiet
+  echo "Waiting for the VM to finish booting..."
+  sleep 20
+fi
 
 echo "== Opening firewall for HTTP (restrict --source-ranges if not public) =="
 gcloud compute firewall-rules create "allow-${VM_NAME}" \
