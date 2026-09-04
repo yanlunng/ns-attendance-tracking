@@ -131,10 +131,27 @@ function reconcileStaleStagingAssignments() {
 }
 
 /**
+ * A KAH designation should always mean "not also sitting in a normal
+ * RBS/FP/PCP slot" — addKahDesignation clears placement when the
+ * designation is first created, but this catches anyone who already had a
+ * designation before that logic existed (or ended up placed again some
+ * other way while still designated).
+ */
+function reconcileKahPlacements() {
+  db.exec(`
+    UPDATE roster SET outfield_section_id = NULL, outfield_slot = NULL
+    WHERE outfield_section_id IS NOT NULL
+      AND id IN (SELECT roster_id FROM kah_designations)
+  `);
+}
+
+/**
  * Eligible for outfield planning: active, not Deferred, not ICT Cancelled,
  * belongs to the given group, hasn't started an approved Outpro at any
- * point this cycle. Confirmed-absent people are still included (they show
- * on the board, dimmed) — see getConfirmedAbsentIds.
+ * point this cycle, and doesn't have a KAH designation (those people only
+ * show on the KAH tab, not auto-sorted into their group's board too).
+ * Confirmed-absent people are still included (they show on the board,
+ * dimmed) — see getConfirmedAbsentIds.
  */
 function eligibleRosterForGroups(groupCodes) {
   const placeholders = groupCodes.map(() => '?').join(',');
@@ -145,6 +162,7 @@ function eligibleRosterForGroups(groupCodes) {
        AND id NOT IN (
          SELECT roster_id FROM attendance_submissions WHERE status = 'outpro' AND approval_status = 'approved'
        )
+       AND id NOT IN (SELECT roster_id FROM kah_designations)
        ORDER BY name COLLATE NOCASE`
     )
     .all(...groupCodes);
@@ -176,6 +194,7 @@ function groupPool(sectionId, allPeople) {
  */
 function getBoard(groupCode) {
   reconcileStaleStagingAssignments();
+  reconcileKahPlacements();
 
   const isHqOrDvr = HQ_DVR_GROUPS.includes(groupCode);
   const structure = PLATOON_STRUCTURE[groupCode];
