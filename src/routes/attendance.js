@@ -8,6 +8,8 @@ const { isWorkingDay } = require('../lib/workingDays');
 const { getCycleRange } = require('../lib/settings');
 const { activeRosterForDate, getPhaseStagger, filterRosterForEditor } = require('../lib/roster');
 const { submitOne } = require('../lib/attendanceSubmit');
+const { REPORT_LINES, canConfirmLine, canConfirmAll } = require('../lib/reportLines');
+const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines } = require('../lib/reportConfirmations');
 
 const router = express.Router();
 
@@ -148,11 +150,24 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
   const cycle = getCycleRange();
 
   if (!isWorkingDay(date)) {
-    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle });
+    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle, confirmation: null });
   }
 
   const { getDailySummary } = require('../lib/merge');
   const summary = getDailySummary(date);
+
+  const confirmedLines = getConfirmedLines(date);
+  const confirmation = {
+    lines: REPORT_LINES.map(({ key, label }) => ({
+      key,
+      label,
+      confirmed: confirmedLines.has(key),
+      canConfirm: canConfirmLine(req.session.user.username, key),
+    })),
+    fullyConfirmed: isDayFullyConfirmed(date),
+    canConfirmAll: canConfirmAll(req.session.user.username),
+  };
+
   res.render('summary', {
     summary,
     date,
@@ -161,7 +176,32 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
     cycle,
     isAdmin: req.session.user.role === 'admin',
     phaseStagger: getPhaseStagger(date),
+    confirmation,
   });
+});
+
+router.post('/summary/confirm-line', requireLogin, blockSelfRole, (req, res) => {
+  const { date, line } = req.body;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !REPORT_LINES.some((l) => l.key === line)) {
+    return res.status(400).render('error', { message: 'Invalid date or line.' });
+  }
+  if (!canConfirmLine(req.session.user.username, line)) {
+    return res.status(403).render('error', { message: "You're not permitted to confirm that line." });
+  }
+  confirmLine(date, line, req.session.user.id);
+  res.redirect(`/summary?date=${encodeURIComponent(date)}`);
+});
+
+router.post('/summary/confirm-all', requireLogin, blockSelfRole, (req, res) => {
+  const { date } = req.body;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
+    return res.status(400).render('error', { message: 'Invalid date.' });
+  }
+  if (!canConfirmAll(req.session.user.username)) {
+    return res.status(403).render('error', { message: 'Only an unrestricted account (e.g. BC/BSM/B2IC) can confirm everything at once.' });
+  }
+  confirmAllLines(date, req.session.user.id);
+  res.redirect(`/summary?date=${encodeURIComponent(date)}`);
 });
 
 module.exports = router;

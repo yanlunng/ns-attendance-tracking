@@ -1,4 +1,5 @@
 <%- include('partials/header') %>
+<% const { formatOffPeriod } = require('../lib/offPeriod'); %>
 <div class="page-head">
   <h1>Attendance Summary</h1>
   <form method="get" action="/summary" class="date-picker">
@@ -20,6 +21,42 @@
     join starting <%= phaseStagger.mainBodyStart %> (Commander Phase only until then).
   </p>
 <% } %>
+
+<div class="upload-box">
+  <h2>Parade state confirmation
+    <% if (confirmation.fullyConfirmed) { %><span class="badge badge-present">✅ Confirmed</span><% } %>
+  </h2>
+  <p class="hint">
+    Confirming a line marks anyone in it with nothing reported yet as Present (approved). Each line
+    can only be confirmed by the KAH whose scope covers it; BC/BSM/B2IC can confirm any line.
+  </p>
+  <table class="attendance-table">
+    <thead><tr><th>Line</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      <% confirmation.lines.forEach(l => { %>
+      <tr>
+        <td data-label="Line"><%= l.label %></td>
+        <td data-label="Status"><%= l.confirmed ? '✅ Confirmed' : '⬜ Not confirmed' %></td>
+        <td>
+          <% if (!l.confirmed && l.canConfirm) { %>
+          <form method="post" action="/summary/confirm-line" class="inline">
+            <input type="hidden" name="date" value="<%= date %>" />
+            <input type="hidden" name="line" value="<%= l.key %>" />
+            <button type="submit">Confirm</button>
+          </form>
+          <% } %>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% if (confirmation.canConfirmAll && !confirmation.fullyConfirmed) { %>
+  <form method="post" action="/summary/confirm-all">
+    <input type="hidden" name="date" value="<%= date %>" />
+    <button type="submit">Confirm ALL lines</button>
+  </form>
+  <% } %>
+</div>
 
 <div class="stats">
   <div class="stat"><span><%= summary.stats.reported %>/<%= summary.stats.total %></span>reported</div>
@@ -59,7 +96,7 @@
         <% } else if (row.conflict) { %>
           <span class="badge badge-danger">Conflict</span>
         <% } else if (row.status === 'off') { %>
-          <span class="badge badge-off">Off <%= row.offPeriod === 'TIME' ? `(${row.offTime}–${row.offTimeEnd})` : `(${row.offPeriod})` %></span>
+          <span class="badge badge-off">Off (<%= formatOffPeriod(row.offPeriod, row.offTime, row.offTimeEnd) %>)</span>
           <span class="badge <%= row.approvalState === 'approved' ? 'badge-present' : 'badge-warn' %>"><%= row.approvalState %></span>
         <% } else if (row.status === 'mc') { %>
           <span class="badge badge-mc">MC</span>
@@ -84,7 +121,7 @@
         <% row.submissions.forEach(s => { %>
           <div class="submitter-line">
             <%= s.username %>:
-            <strong><%= s.status %><% if (s.status === 'off') { %> (<%= s.off_period === 'TIME' ? `${s.off_time}–${s.off_time_end}` : s.off_period %>)<% } %></strong>
+            <strong><%= s.status %><% if (s.status === 'off') { %> (<%= formatOffPeriod(s.off_period, s.off_time, s.off_time_end) %>)<% } %></strong>
             <% if (s.status === 'off' || s.status === 'outpro') { %>· <%= s.approval_status %><% } %>
             <% if (s.remarks) { %> — <%= s.remarks %><% } %>
           </div>

@@ -6,6 +6,9 @@ const { activeRosterForDate, filterRosterForEditor } = require('./roster');
 const { getCycleRange } = require('./settings');
 const { isWorkingDay } = require('./workingDays');
 const { buildWhatsappSummary } = require('./whatsappSummary');
+const { formatOffPeriod } = require('./offPeriod');
+const { REPORT_LINES, canConfirmLine, canConfirmAll } = require('./reportLines');
+const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines } = require('./reportConfirmations');
 
 function todayStr() {
   const d = new Date();
@@ -159,7 +162,30 @@ async function summaryCmd(chatId, text) {
   }
 
   const report = buildWhatsappSummary(date);
-  return telegramApi.sendMessage(chatId, report, { parse_mode: undefined });
+  await telegramApi.sendMessage(chatId, report, { parse_mode: undefined });
+  return sendConfirmationPanel(chatId, user, date);
+}
+
+async function sendConfirmationPanel(chatId, user, date) {
+  const confirmed = getConfirmedLines(date);
+  const fullyConfirmed = isDayFullyConfirmed(date);
+
+  const buttons = [];
+  for (const { key, label } of REPORT_LINES) {
+    if (!canConfirmLine(user.username, key)) continue;
+    const mark = confirmed.has(key) ? '✅' : '⬜';
+    buttons.push([{ text: `${mark} ${label}`, data: `confirmline:${date}:${key}` }]);
+  }
+  if (canConfirmAll(user.username)) {
+    buttons.push([{ text: 'Confirm ALL', data: `confirmall:${date}` }]);
+  }
+
+  const status = fullyConfirmed
+    ? `✅ ${date} is fully confirmed.`
+    : `⬜ ${date} — ${confirmed.size}/${REPORT_LINES.length} lines confirmed.`;
+
+  if (buttons.length === 0) return telegramApi.sendMessage(chatId, status);
+  return telegramApi.sendMessage(chatId, status, telegramApi.inlineKeyboard(buttons));
 }
 
 async function proceedAfterDate(chatId, user, date) {
@@ -273,7 +299,7 @@ async function finalizeSubmission(chatId, user, data) {
   clearSession(chatId);
   const statusLine =
     data.status === 'off'
-      ? `Off (${data.offPeriod === 'TIME' ? `${data.offTime}–${data.offTimeEnd}` : data.offPeriod}) — ${result.approvalStatus}`
+      ? `Off (${formatOffPeriod(data.offPeriod, data.offTime, data.offTimeEnd)}) — ${result.approvalStatus}`
       : `${STATUS_LABELS[data.status]}${result.approvalStatus === 'pending' ? ' — pending approval' : ''}`;
   return telegramApi.sendMessage(chatId, `Saved: <b>${data.personName}</b>, ${data.date} — ${statusLine}.`);
 }
@@ -337,7 +363,29 @@ async function handleCallback(callbackQuery) {
   if (!user) return telegramApi.sendMessage(chatId, "You're not linked yet. Send /link CODE from your account page first.");
 
   const session = getSession(chatId);
-  const [kind, value] = data.split(':');
+  const parts = data.split(':');
+  const [kind, value] = parts;
+
+  if (kind === 'confirmline') {
+    const [, date, lineKey] = parts;
+    if (!canConfirmLine(user.username, lineKey)) {
+      return telegramApi.sendMessage(chatId, "You're not permitted to confirm that line.");
+    }
+    confirmLine(date, lineKey, user.id);
+    const label = (REPORT_LINES.find((l) => l.key === lineKey) || {}).label || lineKey;
+    await telegramApi.sendMessage(chatId, `Confirmed ${label} for ${date} — anyone unreported in it is now marked Present.`);
+    return sendConfirmationPanel(chatId, user, date);
+  }
+
+  if (kind === 'confirmall') {
+    const [, date] = parts;
+    if (!canConfirmAll(user.username)) {
+      return telegramApi.sendMessage(chatId, 'Only an unrestricted account (e.g. BC/BSM/B2IC) can confirm everything at once.');
+    }
+    confirmAllLines(date, user.id);
+    await telegramApi.sendMessage(chatId, `Confirmed every line for ${date}.`);
+    return sendConfirmationPanel(chatId, user, date);
+  }
 
   if (kind === 'date' && session.state === 'awaiting_date') {
     const date = dateFromToken(value);
