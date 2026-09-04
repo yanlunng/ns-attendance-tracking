@@ -1,10 +1,10 @@
 const db = require('../db');
 const { activeRosterForDate } = require('./roster');
 
-/** Groups (status, off_period, off_time) into one comparable key for conflict detection. */
+/** Groups (status, off_period, off_time, off_time_end) into one comparable key for conflict detection. */
 function statusKey(sub) {
   if (sub.status !== 'off') return sub.status;
-  return sub.off_period === 'TIME' ? `off:TIME:${sub.off_time}` : `off:${sub.off_period}`;
+  return sub.off_period === 'TIME' ? `off:TIME:${sub.off_time}-${sub.off_time_end}` : `off:${sub.off_period}`;
 }
 
 /**
@@ -41,6 +41,12 @@ function getDailySummary(date) {
     const mergedKey = distinctKeys.length === 1 ? distinctKeys[0] : null;
     const mergedStatus = mergedKey ? (mergedKey.startsWith('off') ? 'off' : mergedKey) : null;
 
+    let offTime = null;
+    let offTimeEnd = null;
+    if (mergedKey && mergedKey.startsWith('off:TIME:')) {
+      [offTime, offTimeEnd] = mergedKey.slice('off:TIME:'.length).split('-');
+    }
+
     let approvalState = null;
     if (mergedStatus === 'off' || mergedStatus === 'outpro') {
       approvalState = liveSubs.some((s) => s.approval_status === 'pending') ? 'pending' : 'approved';
@@ -52,7 +58,8 @@ function getDailySummary(date) {
       submitterCount: subs.length,
       status: mergedStatus,
       offPeriod: mergedKey && mergedKey.startsWith('off:') ? mergedKey.split(':')[1] : null,
-      offTime: mergedKey && mergedKey.startsWith('off:TIME:') ? mergedKey.split(':')[2] : null,
+      offTime,
+      offTimeEnd,
       approvalState,
       conflict,
       unreported: liveSubs.length === 0,

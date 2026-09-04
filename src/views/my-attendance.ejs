@@ -33,7 +33,7 @@
         </td>
         <td data-label="Detail">
           <% if (row.status === 'off') { %>
-            <%= row.off_period === 'TIME' ? `From ${row.off_time}` : row.off_period %> · <%= row.approval_status %>
+            <%= row.off_period === 'TIME' ? `${row.off_time}–${row.off_time_end}` : row.off_period %> · <%= row.approval_status %>
           <% } else if (row.status === 'outpro') { %>
             <%= row.approval_status %>
           <% } %>

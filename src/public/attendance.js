@@ -20,9 +20,11 @@
 
   window.toggleOffTime = function (periodSelect) {
     var offDetail = periodSelect.closest('.off-detail');
-    var timeInput = offDetail && offDetail.querySelector('input[type=time]');
-    if (!timeInput) return;
-    timeInput.style.display = periodSelect.value === 'TIME' ? '' : 'none';
+    if (!offDetail) return;
+    var display = periodSelect.value === 'TIME' ? '' : 'none';
+    offDetail.querySelectorAll('input[type=time]').forEach(function (input) {
+      input.style.display = display;
+    });
   };
 
   function updatePresentCount() {
@@ -83,9 +85,10 @@
         '<select name="off_period_' + id + '" onchange="window.toggleOffTime(this)">' +
           '<option value="AM">AM</option>' +
           '<option value="PM">PM</option>' +
-          '<option value="TIME">Time-off</option>' +
+          '<option value="TIME">Custom time</option>' +
         '</select>' +
-        '<input type="time" name="off_time_' + id + '" style="display:none" />' +
+        '<input type="time" name="off_time_' + id + '" style="display:none" class="off-time-start" />' +
+        '<input type="time" name="off_time_end_' + id + '" style="display:none" class="off-time-end" />' +
       '</td>' +
       '<td data-label="Reason"><input type="text" name="remarks_' + id + '" placeholder="reason (optional)" /></td>' +
       '<td><button type="button" class="link-btn remove-exception" data-id="' + id + '">Remove</button></td>';

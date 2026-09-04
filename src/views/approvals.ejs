@@ -20,7 +20,7 @@
       <td data-label="Date"><%= g.date %></td>
       <td data-label="Name"><%= g.personName %></td>
       <td data-label="Rank"><%= g.personRank || '' %></td>
-      <td data-label="Period"><%= g.offPeriod === 'TIME' ? `From ${g.offTime}` : g.offPeriod %></td>
+      <td data-label="Period"><%= g.offPeriod === 'TIME' ? `${g.offTime}–${g.offTimeEnd}` : g.offPeriod %></td>
       <td data-label="Submitted by"><%= g.submitters.join(', ') %></td>
       <td data-label="Reason(s)"><%= g.remarksList.join('; ') %></td>
       <td>

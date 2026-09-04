@@ -38,6 +38,7 @@ raw.exec(`
     status TEXT NOT NULL CHECK (status IN ('present', 'off', 'mc', 'outpro')),
     off_period TEXT CHECK (off_period IN ('AM', 'PM', 'TIME') OR off_period IS NULL),
     off_time TEXT,
+    off_time_end TEXT,
     approval_status TEXT NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('pending', 'approved', 'rejected')),
     approved_by INTEGER REFERENCES users(id),
     approved_at TEXT,
@@ -97,6 +98,7 @@ addColumnIfMissing('roster', 'is_commander_phase', 'INTEGER NOT NULL DEFAULT 0')
 addColumnIfMissing('roster', 'position_descr', 'TEXT');
 addColumnIfMissing('roster', 'outfield_section_id', 'INTEGER REFERENCES outfield_sections(id) ON DELETE SET NULL');
 addColumnIfMissing('roster', 'outfield_slot', 'TEXT');
+addColumnIfMissing('attendance_submissions', 'off_time_end', 'TEXT');
 addColumnIfMissing('users', 'needs_password', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'must_change_password', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'roster_id', 'INTEGER REFERENCES roster(id) ON DELETE CASCADE');
@@ -135,6 +137,7 @@ if (needsSubmissionsRebuild()) {
       status TEXT NOT NULL CHECK (status IN ('present', 'off', 'mc', 'outpro')),
       off_period TEXT CHECK (off_period IN ('AM', 'PM', 'TIME') OR off_period IS NULL),
       off_time TEXT,
+      off_time_end TEXT,
       approval_status TEXT NOT NULL DEFAULT 'approved' CHECK (approval_status IN ('pending', 'approved', 'rejected')),
       approved_by INTEGER REFERENCES users(id),
       approved_at TEXT,

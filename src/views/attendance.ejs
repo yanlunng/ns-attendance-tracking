@@ -80,9 +80,10 @@
           <select name="off_period_<%= person.id %>" onchange="window.toggleOffTime(this)">
             <option value="AM" <%= existing.off_period === 'AM' ? 'selected' : '' %>>AM</option>
             <option value="PM" <%= existing.off_period === 'PM' ? 'selected' : '' %>>PM</option>
-            <option value="TIME" <%= existing.off_period === 'TIME' ? 'selected' : '' %>>Time-off</option>
+            <option value="TIME" <%= existing.off_period === 'TIME' ? 'selected' : '' %>>Custom time</option>
           </select>
-          <input type="time" name="off_time_<%= person.id %>" value="<%= existing.off_time || '' %>" style="<%= existing.off_period === 'TIME' ? '' : 'display:none' %>" />
+          <input type="time" name="off_time_<%= person.id %>" value="<%= existing.off_time || '' %>" style="<%= existing.off_period === 'TIME' ? '' : 'display:none' %>" class="off-time-start" />
+          <input type="time" name="off_time_end_<%= person.id %>" value="<%= existing.off_time_end || '' %>" style="<%= existing.off_period === 'TIME' ? '' : 'display:none' %>" class="off-time-end" />
         </td>
         <td data-label="Reason"><input type="text" name="remarks_<%= person.id %>" value="<%= existing.remarks || '' %>" placeholder="reason (optional)" /></td>
         <td><button type="button" class="link-btn remove-exception" data-id="<%= person.id %>">Remove</button></td>

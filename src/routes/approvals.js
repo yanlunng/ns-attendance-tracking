@@ -5,7 +5,7 @@ const { requireAdmin } = require('../auth');
 const router = express.Router();
 
 function groupKey(row) {
-  return [row.date, row.roster_id, row.status, row.off_period || '', row.off_time || ''].join('|');
+  return [row.date, row.roster_id, row.status, row.off_period || '', row.off_time || '', row.off_time_end || ''].join('|');
 }
 
 function pendingGroups(status) {
@@ -31,6 +31,7 @@ function pendingGroups(status) {
         personRank: row.person_rank,
         offPeriod: row.off_period,
         offTime: row.off_time,
+        offTimeEnd: row.off_time_end,
         submissionIds: [],
         submitters: [],
         remarksList: [],

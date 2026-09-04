@@ -101,6 +101,7 @@ router.post('/attendance', requireLogin, blockSelfRole, (req, res) => {
         status,
         offPeriod: req.body[`off_period_${person.id}`],
         offTime: req.body[`off_time_${person.id}`],
+        offTimeEnd: req.body[`off_time_end_${person.id}`],
         remarks: req.body[`remarks_${person.id}`],
       }); // per-person validation failures (e.g. missing off period) are silently skipped, same as before
     }

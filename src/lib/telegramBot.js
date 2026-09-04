@@ -196,10 +196,29 @@ async function askStatus(chatId, user, date, personName) {
   return telegramApi.sendMessage(chatId, `Marking <b>${personName}</b> for ${date}. What status?`, telegramApi.inlineKeyboard(buttons));
 }
 
+function normalizeTime(text) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(text.trim());
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  return `${String(hour).padStart(2, '0')}:${match[2]}`;
+}
+
 async function handleOffTimeInput(chatId, user, session, text) {
-  const time = text.trim();
-  if (!/^\d{1,2}:\d{2}$/.test(time)) return telegramApi.sendMessage(chatId, 'Send a time like 14:30.');
-  return finalizeSubmission(chatId, user, { ...session.data, offTime: time });
+  const start = normalizeTime(text);
+  if (!start) return telegramApi.sendMessage(chatId, 'Send a time like 14:30.');
+  setSession(chatId, 'awaiting_off_time_end', { ...session.data, offTime: start });
+  return telegramApi.sendMessage(chatId, 'And what time does it end?');
+}
+
+async function handleOffTimeEndInput(chatId, user, session, text) {
+  const end = normalizeTime(text);
+  if (!end) return telegramApi.sendMessage(chatId, 'Send a time like 16:00.');
+  if (end <= session.data.offTime) {
+    return telegramApi.sendMessage(chatId, `That's not after ${session.data.offTime} — send an end time later than the start.`);
+  }
+  return finalizeSubmission(chatId, user, { ...session.data, offTimeEnd: end });
 }
 
 async function handleMcDetail(chatId, user, session, text, photo) {
@@ -221,6 +240,7 @@ async function finalizeSubmission(chatId, user, data) {
     status: data.status,
     offPeriod: data.offPeriod,
     offTime: data.offTime,
+    offTimeEnd: data.offTimeEnd,
     remarks: data.remarks,
   });
 
@@ -236,7 +256,7 @@ async function finalizeSubmission(chatId, user, data) {
   clearSession(chatId);
   const statusLine =
     data.status === 'off'
-      ? `Off (${data.offPeriod === 'TIME' ? `from ${data.offTime}` : data.offPeriod}) — ${result.approvalStatus}`
+      ? `Off (${data.offPeriod === 'TIME' ? `${data.offTime}–${data.offTimeEnd}` : data.offPeriod}) — ${result.approvalStatus}`
       : `${STATUS_LABELS[data.status]}${result.approvalStatus === 'pending' ? ' — pending approval' : ''}`;
   return telegramApi.sendMessage(chatId, `Saved: <b>${data.personName}</b>, ${data.date} — ${statusLine}.`);
 }
@@ -281,6 +301,8 @@ async function handleMessage(message) {
       return handlePersonQuery(chatId, user, session, text);
     case 'awaiting_off_time':
       return handleOffTimeInput(chatId, user, session, text);
+    case 'awaiting_off_time_end':
+      return handleOffTimeEndInput(chatId, user, session, text);
     case 'awaiting_mc_detail':
       return handleMcDetail(chatId, user, session, text, message.photo);
     default:
@@ -321,7 +343,7 @@ async function handleCallback(callbackQuery) {
       return telegramApi.sendMessage(
         chatId,
         'Which period?',
-        telegramApi.inlineKeyboard([OFF_PERIODS.map((p) => ({ text: p === 'TIME' ? 'Time-off' : p, data: `period:${p}` }))])
+        telegramApi.inlineKeyboard([OFF_PERIODS.map((p) => ({ text: p === 'TIME' ? 'Custom time' : p, data: `period:${p}` }))])
       );
     }
     if (value === 'mc') {
@@ -339,7 +361,7 @@ async function handleCallback(callbackQuery) {
   if (kind === 'period' && session.state === 'awaiting_off_period') {
     if (value === 'TIME') {
       setSession(chatId, 'awaiting_off_time', { ...session.data, offPeriod: 'TIME' });
-      return telegramApi.sendMessage(chatId, 'What time? (e.g. 14:30)');
+      return telegramApi.sendMessage(chatId, 'What time does it start? (e.g. 14:30)');
     }
     return finalizeSubmission(chatId, user, { ...session.data, offPeriod: value });
   }

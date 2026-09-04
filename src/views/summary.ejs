@@ -59,7 +59,7 @@
         <% } else if (row.conflict) { %>
           <span class="badge badge-danger">Conflict</span>
         <% } else if (row.status === 'off') { %>
-          <span class="badge badge-off">Off <%= row.offPeriod === 'TIME' ? `(from ${row.offTime})` : `(${row.offPeriod})` %></span>
+          <span class="badge badge-off">Off <%= row.offPeriod === 'TIME' ? `(${row.offTime}–${row.offTimeEnd})` : `(${row.offPeriod})` %></span>
           <span class="badge <%= row.approvalState === 'approved' ? 'badge-present' : 'badge-warn' %>"><%= row.approvalState %></span>
         <% } else if (row.status === 'mc') { %>
           <span class="badge badge-mc">MC</span>
@@ -84,7 +84,7 @@
         <% row.submissions.forEach(s => { %>
           <div class="submitter-line">
             <%= s.username %>:
-            <strong><%= s.status %><% if (s.status === 'off') { %> (<%= s.off_period === 'TIME' ? `from ${s.off_time}` : s.off_period %>)<% } %></strong>
+            <strong><%= s.status %><% if (s.status === 'off') { %> (<%= s.off_period === 'TIME' ? `${s.off_time}–${s.off_time_end}` : s.off_period %>)<% } %></strong>
             <% if (s.status === 'off' || s.status === 'outpro') { %>· <%= s.approval_status %><% } %>
             <% if (s.remarks) { %> — <%= s.remarks %><% } %>
           </div>

@@ -4,7 +4,7 @@ const STATUS_LABEL = { present: 'Present', off: 'Off', mc: 'MC', outpro: '1st Da
 
 function formatStatus(s) {
   if (s.status === 'off') {
-    const period = s.off_period === 'TIME' ? `from ${s.off_time}` : s.off_period;
+    const period = s.off_period === 'TIME' ? `${s.off_time}–${s.off_time_end}` : s.off_period;
     return `Off (${period}, ${s.approval_status})`;
   }
   if (s.status === 'outpro') return `1st Day Outpro (${s.approval_status})`;
@@ -35,7 +35,7 @@ async function buildSummaryWorkbook(summary) {
     if (row.unreported) mergedStatusLabel = 'NOT REPORTED';
     else if (row.conflict) mergedStatusLabel = 'CONFLICT';
     else if (row.status === 'off') {
-      const period = row.offPeriod === 'TIME' ? `from ${row.offTime}` : row.offPeriod;
+      const period = row.offPeriod === 'TIME' ? `${row.offTime}–${row.offTimeEnd}` : row.offPeriod;
       mergedStatusLabel = `Off (${period}, ${row.approvalState})`;
     } else if (row.status === 'outpro') mergedStatusLabel = `1st Day Outpro (${row.approvalState})`;
     else mergedStatusLabel = STATUS_LABEL[row.status] || row.status;
