@@ -1,0 +1,40 @@
+<%- include('partials/header') %>
+<h1>Nominal Roll / Roster</h1>
+
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+<% if (imported) { %><p class="notice">Imported <%= imported %> people.</p><% } %>
+
+<div class="upload-box">
+  <h2>Upload Excel roster</h2>
+  <p class="hint">
+    First sheet, header row on row 1. Requires a <strong>Name</strong> column
+    (or "Full Name" / "Personnel" / "Nominal Roll"). Optional columns:
+    ID/Rank/Staff ID, Unit/Department. Any other columns are kept as extra data.
+  </p>
+  <form method="post" action="/roster/upload" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".xlsx,.xls" required />
+    <label><input type="radio" name="mode" value="replace" checked /> Replace current roster</label>
+    <label><input type="radio" name="mode" value="append" /> Append to current roster</label>
+    <button type="submit">Upload</button>
+  </form>
+</div>
+
+<h2>Current roster (<%= roster.length %>)</h2>
+<table class="attendance-table">
+  <thead><tr><th>Name</th><th>ID</th><th>Unit</th><th></th></tr></thead>
+  <tbody>
+    <% roster.forEach(person => { %>
+    <tr>
+      <td><%= person.name %></td>
+      <td><%= person.ref_id || '' %></td>
+      <td><%= person.unit || '' %></td>
+      <td>
+        <form method="post" action="/roster/<%= person.id %>/remove" onsubmit="return confirm('Remove this person from the roster?')">
+          <button type="submit" class="link-btn">Remove</button>
+        </form>
+      </td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<%- include('partials/footer') %>

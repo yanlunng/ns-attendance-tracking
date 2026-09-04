@@ -1,0 +1,37 @@
+<%- include('partials/header') %>
+<h1>Users</h1>
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+
+<div class="upload-box">
+  <h2>Add user</h2>
+  <form method="post" action="/users">
+    <label>Username <input type="text" name="username" required /></label>
+    <label>Password <input type="password" name="password" required minlength="8" /></label>
+    <label>Role
+      <select name="role">
+        <option value="user">User</option>
+        <option value="admin">Admin</option>
+      </select>
+    </label>
+    <button type="submit">Create</button>
+  </form>
+</div>
+
+<table class="attendance-table">
+  <thead><tr><th>Username</th><th>Role</th><th>Created</th><th></th></tr></thead>
+  <tbody>
+    <% users.forEach(u => { %>
+    <tr>
+      <td><%= u.username %></td>
+      <td><%= u.role %></td>
+      <td><%= u.created_at %></td>
+      <td>
+        <form method="post" action="/users/<%= u.id %>/delete" onsubmit="return confirm('Delete this user?')">
+          <button type="submit" class="link-btn">Delete</button>
+        </form>
+      </td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<%- include('partials/footer') %>

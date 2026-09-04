@@ -1,0 +1,22 @@
+{
+  "name": "attendance-app",
+  "version": "1.0.0",
+  "description": "Daily attendance tracker seeded from an Excel nominal roll, with multi-user independent submissions and conflict merging.",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "multer": "^2.0.0"
+  }
+}

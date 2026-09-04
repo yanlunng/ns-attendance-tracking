@@ -1,0 +1,80 @@
+<%- include('partials/header') %>
+<div class="page-head">
+  <h1>Mark Attendance</h1>
+  <form method="get" action="/attendance" class="date-picker">
+    <label>Date <input type="date" name="date" value="<%= date %>" max="<%= todayStr %>" onchange="this.form.submit()" /></label>
+  </form>
+</div>
+
+<% if (typeof saved !== 'undefined' && saved) { %>
+  <p class="notice">Saved your attendance report for <%= date %>.</p>
+<% } %>
+
+<p class="hint">
+  Everyone defaults to <strong>Present</strong> for <strong><%= date %></strong>. Search below to
+  flag anyone who's Off or on Leave — you don't need to touch anyone else. Your submission is
+  independent; it's merged with everyone else's on the
+  <a href="/summary?date=<%= date %>">Summary</a> page, and disagreements are flagged there.
+</p>
+
+<% if (rows.length === 0) { %>
+  <p class="empty">No roster uploaded yet. Ask an admin to upload the nominal roll under "Roster".</p>
+<% } else {
+     const exceptionsInitial = rows.filter(r => r.existing && r.existing.status !== 'present');
+     const presentRows = rows.filter(r => !r.existing || r.existing.status === 'present');
+%>
+<form method="post" action="/attendance" id="attendance-form">
+  <input type="hidden" name="date" value="<%= date %>" />
+
+  <div class="add-exception">
+    <label>Mark someone Off / on Leave
+      <input type="text" id="search-input" placeholder="Type a name…" autocomplete="off" />
+    </label>
+    <div id="search-results" class="search-results"></div>
+  </div>
+
+  <table class="attendance-table" id="exceptions-table" style="<%= exceptionsInitial.length ? '' : 'display:none' %>">
+    <thead>
+      <tr><th>Name</th><th>ID</th><th>Unit</th><th>Status</th><th>Reason</th><th></th></tr>
+    </thead>
+    <tbody id="exceptions-body">
+      <% exceptionsInitial.forEach(({ person, existing }) => { %>
+      <tr data-id="<%= person.id %>">
+        <td><%= person.name %></td>
+        <td><%= person.ref_id || '' %></td>
+        <td><%= person.unit || '' %></td>
+        <td>
+          <select name="status_<%= person.id %>">
+            <option value="off" <%= existing.status === 'off' ? 'selected' : '' %>>Off</option>
+            <option value="leave" <%= existing.status === 'leave' ? 'selected' : '' %>>Leave</option>
+          </select>
+        </td>
+        <td><input type="text" name="remarks_<%= person.id %>" value="<%= existing.remarks || '' %>" placeholder="reason (optional)" /></td>
+        <td><button type="button" class="link-btn remove-exception" data-id="<%= person.id %>">Remove</button></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <p id="no-exceptions-msg" class="empty" style="<%= exceptionsInitial.length ? 'display:none' : '' %>">
+    Nobody marked Off or on Leave yet — everyone is Present.
+  </p>
+
+  <div id="present-hidden-inputs">
+    <% presentRows.forEach(({ person }) => { %>
+      <input type="hidden" name="status_<%= person.id %>" value="present" id="present-input-<%= person.id %>" />
+    <% }) %>
+  </div>
+
+  <p class="hint" id="present-count-hint"><%= presentRows.length %> of <%= rows.length %> default to Present and need no action.</p>
+
+  <button type="submit">Save my attendance report</button>
+</form>
+
+<script>
+  window.ROSTER = <%- JSON.stringify(rows.map(r => ({ id: r.person.id, name: r.person.name, unit: r.person.unit || '', ref_id: r.person.ref_id || '' }))) %>;
+  window.INITIAL_EXCEPTION_IDS = <%- JSON.stringify(exceptionsInitial.map(r => r.person.id)) %>;
+  window.TOTAL_PEOPLE = <%= rows.length %>;
+</script>
+<script src="/attendance.js"></script>
+<% } %>
+<%- include('partials/footer') %>

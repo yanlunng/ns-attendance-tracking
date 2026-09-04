@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= typeof title !== 'undefined' ? title : 'Attendance' %></title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<% if (currentUser) { %>
+  <header class="topbar">
+    <div class="brand">Daily Attendance</div>
+    <nav>
+      <a href="/attendance">Mark Attendance</a>
+      <a href="/summary">Summary</a>
+      <% if (currentUser.role === 'admin') { %>
+        <a href="/roster">Roster</a>
+        <a href="/users">Users</a>
+      <% } %>
+    </nav>
+    <div class="who">
+      <span><%= currentUser.username %></span>
+      <form method="post" action="/logout" class="inline">
+        <button type="submit" class="link-btn">Log out</button>
+      </form>
+    </div>
+  </header>
+<% } %>
+<main class="container">
