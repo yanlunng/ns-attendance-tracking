@@ -6,7 +6,7 @@ const db = require('../db');
 const { requireLogin, blockSelfRole } = require('../auth');
 const { isWorkingDay } = require('../lib/workingDays');
 const { getCycleRange } = require('../lib/settings');
-const { activeRosterForDate, getPhaseStagger } = require('../lib/roster');
+const { activeRosterForDate, getPhaseStagger, filterRosterForEditor } = require('../lib/roster');
 const { submitOne } = require('../lib/attendanceSubmit');
 
 const router = express.Router();
@@ -47,7 +47,7 @@ router.get('/attendance', requireLogin, blockSelfRole, (req, res) => {
     });
   }
 
-  const roster = activeRosterForDate(date);
+  const roster = filterRosterForEditor(activeRosterForDate(date), req.session.user.username);
 
   const mySubs = db
     .prepare('SELECT * FROM attendance_submissions WHERE date = ? AND user_id = ?')
@@ -86,7 +86,7 @@ router.post('/attendance', requireLogin, blockSelfRole, (req, res) => {
     return res.status(400).render('error', { message: 'Weekends do not require attendance and cannot be saved.' });
   }
 
-  const roster = activeRosterForDate(date);
+  const roster = filterRosterForEditor(activeRosterForDate(date), req.session.user.username);
 
   const tx = db.transaction(() => {
     for (const person of roster) {
@@ -98,6 +98,7 @@ router.post('/attendance', requireLogin, blockSelfRole, (req, res) => {
         rosterId: person.id,
         submitterId: req.session.user.id,
         submitterRole: req.session.user.role,
+        submitterUsername: req.session.user.username,
         status,
         offPeriod: req.body[`off_period_${person.id}`],
         offTime: req.body[`off_time_${person.id}`],

@@ -200,15 +200,15 @@ function bootstrapAdmin() {
 // an admin sets each one's password via the Users page, after which the
 // holder can change it themselves at their own discretion.
 const KAH_ROLES = [
-  { username: 'bc', role: 'admin', telegramLinkCap: 3 },
-  { username: 'bsm', role: 'admin', telegramLinkCap: 3 },
-  { username: 'b2ic', role: 'editor', telegramLinkCap: 3 },
-  { username: 'pc', role: 'editor', telegramLinkCap: 4 },
-  { username: 'ps', role: 'editor', telegramLinkCap: 4 },
-  { username: 'p2ic', role: 'editor', telegramLinkCap: 4 },
-  { username: 'fpcom', role: 'editor', telegramLinkCap: 12 },
-  { username: 'rcom', role: 'editor', telegramLinkCap: 4 },
-  { username: 'fucom', role: 'editor', telegramLinkCap: 12 },
+  { username: 'bc', role: 'admin', telegramLinkCap: 3, editScope: null },
+  { username: 'bsm', role: 'admin', telegramLinkCap: 3, editScope: null },
+  { username: 'b2ic', role: 'editor', telegramLinkCap: 3, editScope: null },
+  { username: 'pc', role: 'editor', telegramLinkCap: 4, editScope: ['RBS', 'HQ', 'DVR'] },
+  { username: 'ps', role: 'editor', telegramLinkCap: 4, editScope: ['RBS', 'HQ', 'DVR'] },
+  { username: 'p2ic', role: 'editor', telegramLinkCap: 4, editScope: ['RBS', 'HQ', 'DVR'] },
+  { username: 'fpcom', role: 'editor', telegramLinkCap: 12, editScope: ['FP'] },
+  { username: 'rcom', role: 'editor', telegramLinkCap: 4, editScope: ['PSTAR'] },
+  { username: 'fucom', role: 'editor', telegramLinkCap: 12, editScope: ['RBS', 'DVR'] },
 ];
 
 function bootstrapKahRoles() {
@@ -238,7 +238,16 @@ function telegramLinkCapFor(username) {
   return KAH_LINK_CAPS.get(username) ?? DEFAULT_TELEGRAM_LINK_CAP;
 }
 
+// null = unrestricted (can mark anyone); an array restricts marking to only
+// roster members whose group_code is in that list. Only applies to the named
+// KAH accounts above — any other admin/editor/user account is unrestricted.
+const KAH_EDIT_SCOPES = new Map(KAH_ROLES.map((r) => [r.username, r.editScope]));
+function editScopeFor(username) {
+  return KAH_EDIT_SCOPES.has(username) ? KAH_EDIT_SCOPES.get(username) : null;
+}
+
 module.exports = db;
 module.exports.KAH_ROLES = KAH_ROLES;
 module.exports.isKahUsername = isKahUsername;
 module.exports.telegramLinkCapFor = telegramLinkCapFor;
+module.exports.editScopeFor = editScopeFor;

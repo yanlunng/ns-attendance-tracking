@@ -53,4 +53,15 @@ function getPhaseStagger(date) {
   return { mainBodyStart, excludedCount };
 }
 
-module.exports = { activeRosterForDate, getPhaseStagger };
+/**
+ * Narrows a roster list down to what a given username is allowed to mark —
+ * unrestricted accounts (the default) get the list back unchanged; scoped
+ * KAH accounts (see db.editScopeFor) only get their permitted group(s).
+ */
+function filterRosterForEditor(roster, username) {
+  const scope = db.editScopeFor(username);
+  if (!scope) return roster;
+  return roster.filter((p) => scope.includes(p.group_code));
+}
+
+module.exports = { activeRosterForDate, getPhaseStagger, filterRosterForEditor };

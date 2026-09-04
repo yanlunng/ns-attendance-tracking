@@ -27,7 +27,7 @@ const upsertStmt = db.prepare(`
  * web Mark Attendance form and the Telegram bot so both channels behave
  * identically. Returns { ok: true, approvalStatus } or { ok: false, error }.
  */
-function submitOne({ date, rosterId, submitterId, submitterRole, status, offPeriod, offTime, offTimeEnd, remarks }) {
+function submitOne({ date, rosterId, submitterId, submitterRole, submitterUsername, status, offPeriod, offTime, offTimeEnd, remarks }) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return { ok: false, error: 'Invalid date.' };
   if (!isWorkingDay(date)) return { ok: false, error: 'Weekends do not require attendance and cannot be saved.' };
   if (!STATUSES.includes(status)) return { ok: false, error: 'Invalid status.' };
@@ -35,8 +35,13 @@ function submitOne({ date, rosterId, submitterId, submitterRole, status, offPeri
     return { ok: false, error: 'Only admins and editors can mark 1st Day Outpro.' };
   }
 
-  const eligible = activeRosterForDate(date).some((p) => p.id === rosterId);
-  if (!eligible) return { ok: false, error: 'That person is not eligible to be marked for this date.' };
+  const person = activeRosterForDate(date).find((p) => p.id === rosterId);
+  if (!person) return { ok: false, error: 'That person is not eligible to be marked for this date.' };
+
+  const editScope = db.editScopeFor(submitterUsername);
+  if (editScope && !editScope.includes(person.group_code)) {
+    return { ok: false, error: 'You are not permitted to mark attendance for this person.' };
+  }
 
   let normOffPeriod = null;
   let normOffTime = null;
