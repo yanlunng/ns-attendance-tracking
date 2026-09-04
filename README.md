@@ -98,9 +98,20 @@ deleting the VM — if you ever recreate the instance, snapshot the disk first
 (`gcloud compute disks snapshot`) or copy `data/attendance.db` off it.
 
 For HTTPS, put this behind a GCP HTTPS Load Balancer (with a managed
-certificate) pointed at the VM, or run Caddy/nginx on the VM itself as a
-reverse proxy — don't expose port 80 with plaintext logins beyond a trusted
-network.
+certificate) pointed at the VM, or let the deploy script do it for you: get a
+domain pointed at the VM's external IP (a free one from DuckDNS works fine —
+no purchase needed) and pass it as `DOMAIN`:
+
+```bash
+export DOMAIN=your-subdomain.duckdns.org   # must already resolve to the VM's IP
+./deploy/gcp-deploy.sh
+```
+
+This runs [Caddy](https://caddyserver.com/) as a reverse proxy in front of
+the app, which automatically issues and renews a real Let's Encrypt
+certificate — no manual cert management. Leave `DOMAIN` unset to keep
+serving plain HTTP on the bare IP, as before. Don't expose port 80 with
+plaintext logins beyond a trusted network until `DOMAIN` is set.
 
 ### Option B: plain VPS with a process manager
 

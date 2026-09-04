@@ -24,6 +24,12 @@ SESSION_SECRET="${SESSION_SECRET:?Set SESSION_SECRET to a long random string, e.
 ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:?Set ADMIN_PASSWORD to a strong password}"
 
+# Optional: set DOMAIN (e.g. export DOMAIN=ns-attendance.duckdns.org, already
+# pointed at this VM's external IP) to front the app with Caddy, which
+# auto-issues and renews a real Let's Encrypt HTTPS certificate. Leave unset
+# to keep serving plain HTTP on the bare IP, same as before.
+DOMAIN="${DOMAIN:-}"
+
 gcloud config set project "$PROJECT_ID"
 gcloud config set compute/zone "$ZONE"
 
@@ -72,29 +78,68 @@ if [[ "$CURRENT_SCOPES" != *"cloud-platform"* ]]; then
   sleep 20
 fi
 
-echo "== Opening firewall for HTTP (restrict --source-ranges if not public) =="
+echo "== Opening firewall for HTTP/HTTPS (restrict --source-ranges if not public) =="
 gcloud compute firewall-rules create "allow-${VM_NAME}" \
-  --allow=tcp:80 \
+  --allow=tcp:80,tcp:443 \
   --target-tags="$VM_NAME" \
   --source-ranges=0.0.0.0/0 || true
 
 echo "== Pulling and running the container on the VM =="
-gcloud compute ssh "$VM_NAME" -- "
-  docker-credential-gcr configure-docker --registries=${REGION}-docker.pkg.dev
-  docker rm -f ${VM_NAME} 2>/dev/null || true
-  docker pull ${IMAGE}
-  docker run -d --name ${VM_NAME} \
-    -p 80:3000 \
-    -e SESSION_SECRET='${SESSION_SECRET}' \
-    -e ADMIN_USERNAME='${ADMIN_USERNAME}' \
-    -e ADMIN_PASSWORD='${ADMIN_PASSWORD}' \
-    -v attendance-data:/app/data \
-    --restart unless-stopped \
-    ${IMAGE}
-"
+if [[ -n "$DOMAIN" ]]; then
+  # App container joins a private Docker network and isn't published to the
+  # host directly — Caddy owns ports 80/443 and reverse-proxies to it,
+  # handling the Let's Encrypt certificate automatically.
+  gcloud compute ssh "$VM_NAME" -- "
+    docker-credential-gcr configure-docker --registries=${REGION}-docker.pkg.dev
+    docker network create attendance-net 2>/dev/null || true
+    docker rm -f ${VM_NAME} caddy 2>/dev/null || true
+    docker pull ${IMAGE}
+    docker run -d --name ${VM_NAME} \
+      --network attendance-net \
+      -e SESSION_SECRET='${SESSION_SECRET}' \
+      -e ADMIN_USERNAME='${ADMIN_USERNAME}' \
+      -e ADMIN_PASSWORD='${ADMIN_PASSWORD}' \
+      -v attendance-data:/app/data \
+      --restart unless-stopped \
+      ${IMAGE}
+    cat > Caddyfile <<'CADDYEOF'
+${DOMAIN} {
+    reverse_proxy ${VM_NAME}:3000
+}
+CADDYEOF
+    docker run -d --name caddy \
+      --network attendance-net \
+      -p 80:80 -p 443:443 \
+      -v \$(pwd)/Caddyfile:/etc/caddy/Caddyfile \
+      -v caddy_data:/data \
+      -v caddy_config:/config \
+      --restart unless-stopped \
+      caddy:2
+  "
+else
+  gcloud compute ssh "$VM_NAME" -- "
+    docker-credential-gcr configure-docker --registries=${REGION}-docker.pkg.dev
+    docker rm -f ${VM_NAME} 2>/dev/null || true
+    docker pull ${IMAGE}
+    docker run -d --name ${VM_NAME} \
+      -p 80:3000 \
+      -e SESSION_SECRET='${SESSION_SECRET}' \
+      -e ADMIN_USERNAME='${ADMIN_USERNAME}' \
+      -e ADMIN_PASSWORD='${ADMIN_PASSWORD}' \
+      -v attendance-data:/app/data \
+      --restart unless-stopped \
+      ${IMAGE}
+  "
+fi
 
 EXTERNAL_IP=$(gcloud compute instances describe "$VM_NAME" --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
 echo ""
-echo "Done. App should be reachable at: http://${EXTERNAL_IP}"
+if [[ -n "$DOMAIN" ]]; then
+  echo "Done. App should be reachable at: https://${DOMAIN}"
+  echo "(Caddy needs a minute on first run to issue the certificate — if it doesn't load immediately, wait ~60s and retry.)"
+  echo "Make sure ${DOMAIN} already resolves to ${EXTERNAL_IP} — Caddy's cert issuance will fail otherwise."
+else
+  echo "Done. App should be reachable at: http://${EXTERNAL_IP}"
+  echo "Reminder: this is plain HTTP. Re-run with DOMAIN set (pointed at ${EXTERNAL_IP}) to get automatic HTTPS via Caddy."
+fi
 echo "Log in with ${ADMIN_USERNAME} / the ADMIN_PASSWORD you set, then change it via the Users page."
-echo "Reminder: this is plain HTTP. Put HTTPS in front (load balancer or nginx/Caddy on the VM) before real use."
