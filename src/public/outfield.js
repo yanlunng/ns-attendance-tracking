@@ -1,5 +1,6 @@
 (function () {
   var board = document.querySelector('.outfield-board');
+  console.log('[outfield] script loaded, board found:', !!board);
   if (!board) return;
 
   var dragEl = null;
@@ -32,7 +33,9 @@
   }
 
   document.addEventListener('pointerdown', function (e) {
+    console.log('[outfield] pointerdown', e.pointerType, 'target:', e.target.tagName, e.target.className);
     var card = e.target.closest('.outfield-card[data-draggable="1"]');
+    console.log('[outfield] card found:', !!card);
     if (!card) return;
     dragEl = card;
     startX = e.clientX;
@@ -48,6 +51,7 @@
 
     if (!dragging) {
       if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+      console.log('[outfield] drag threshold crossed, starting drag');
       dragging = true;
       ghost = makeGhost(dragEl);
       dragEl.classList.add('outfield-card-dragging');
@@ -60,9 +64,11 @@
   });
 
   document.addEventListener('pointerup', function (e) {
+    console.log('[outfield] pointerup, dragEl:', !!dragEl, 'dragging:', dragging);
     if (!dragEl) return;
     if (dragging) {
       var zone = findDropzone(e.clientX, e.clientY);
+      console.log('[outfield] drop zone found:', !!zone, zone ? zone.getAttribute('data-section-id') : null);
       clearHighlights();
       if (ghost) ghost.remove();
       dragEl.classList.remove('outfield-card-dragging');
@@ -71,6 +77,7 @@
         var personId = dragEl.getAttribute('data-person-id');
         var sectionId = zone.getAttribute('data-section-id');
         var slot = zone.getAttribute('data-slot') || '';
+        console.log('[outfield] posting assign', { personId: personId, sectionId: sectionId, slot: slot });
         fetch('/outfield/assign', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -79,10 +86,14 @@
         })
           .then(function (r) { return r.json(); })
           .then(function (res) {
+            console.log('[outfield] assign response', res);
             if (res.ok) window.location.reload();
             else alert(res.error || 'Could not move that person.');
           })
-          .catch(function () { alert('Network error — could not save that move.'); });
+          .catch(function (err) {
+            console.log('[outfield] assign fetch error', err);
+            alert('Network error — could not save that move.');
+          });
       }
     }
     dragEl = null;
@@ -90,7 +101,8 @@
     dragging = false;
   });
 
-  document.addEventListener('pointercancel', function () {
+  document.addEventListener('pointercancel', function (e) {
+    console.log('[outfield] pointercancel');
     if (ghost) ghost.remove();
     if (dragEl) dragEl.classList.remove('outfield-card-dragging');
     clearHighlights();

@@ -196,6 +196,8 @@ form.inline { display: inline; }
   cursor: grab;
   touch-action: none;
   user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
 }
 .outfield-card-dragging { opacity: 0.3; }
 .outfield-card-off {
