@@ -7,43 +7,22 @@
   <% }) %>
 </div>
 
-<% if (!board.hasStructure) { %>
-  <p class="hint">
-    No platoon/section structure has been defined for <%= group %> yet. The HQ/DVR pools below are
-    shared across every group — everyone eligible battery-wide starts sorted into one of them.
-  </p>
-<% } else { %>
-  <p class="hint">
-    HQ and DVR are shared pools across the whole battery, not just <%= group %>.
-    <% if (canEdit) { %>
-      Drag a card from a pool into a slot to assign them. Dropping onto an occupied slot bounces
-      the previous person back to HQ. Rank and name shown together.
-    <% } else { %>
-      Read-only view — ask an admin or editor to make changes.
-    <% } %>
-  </p>
-<% } %>
+<p class="hint">
+  <% if (!board.hasStructure) { %>
+    No platoon/section structure has been defined for <%= group %> yet — everyone eligible is
+    listed below, ready for when one is added.
+  <% } %>
+  HQ and DVR are shown as a shared pool at the bottom of every group's board, since they're the
+  natural source of spares/replacements regardless of which group you're organizing.
+  <% if (canEdit) { %>
+    Drag a card into a slot to assign them. Dropping onto an occupied slot bounces the previous
+    person back to their own group's pool. Rank and name shown together.
+  <% } else { %>
+    Read-only view — ask an admin or editor to make changes.
+  <% } %>
+</p>
 
 <div class="outfield-board" data-group="<%= group %>">
-  <div class="outfield-staging">
-    <div class="outfield-pool">
-      <h3>HQ (<%= board.hq.people.length %>)</h3>
-      <div class="outfield-dropzone" data-section-id="<%= board.hq.id %>" data-slot="">
-        <% board.hq.people.forEach(p => { %>
-          <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %></div>
-        <% }) %>
-      </div>
-    </div>
-    <div class="outfield-pool">
-      <h3>DVR (<%= board.dvr.people.length %>)</h3>
-      <div class="outfield-dropzone" data-section-id="<%= board.dvr.id %>" data-slot="">
-        <% board.dvr.people.forEach(p => { %>
-          <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %></div>
-        <% }) %>
-      </div>
-    </div>
-  </div>
-
   <% board.platoons.forEach(platoon => { %>
     <h2><%= platoon.name %></h2>
     <div class="outfield-platoon">
@@ -74,6 +53,39 @@
       <% }) %>
     </div>
   <% }) %>
+
+  <% if (board.ownUnassigned) { %>
+    <div class="outfield-staging">
+      <div class="outfield-pool">
+        <h3><%= board.ownUnassigned.name %> (<%= board.ownUnassigned.people.length %>)</h3>
+        <div class="outfield-dropzone" data-section-id="<%= board.ownUnassigned.id %>" data-slot="">
+          <% board.ownUnassigned.people.forEach(p => { %>
+            <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %></div>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+  <% } %>
+
+  <h2>HQ / DVR (shared)</h2>
+  <div class="outfield-staging">
+    <div class="outfield-pool">
+      <h3>HQ (<%= board.hq.people.length %>)</h3>
+      <div class="outfield-dropzone" data-section-id="<%= board.hq.id %>" data-slot="">
+        <% board.hq.people.forEach(p => { %>
+          <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %></div>
+        <% }) %>
+      </div>
+    </div>
+    <div class="outfield-pool">
+      <h3>DVR (<%= board.dvr.people.length %>)</h3>
+      <div class="outfield-dropzone" data-section-id="<%= board.dvr.id %>" data-slot="">
+        <% board.dvr.people.forEach(p => { %>
+          <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %></div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
 </div>
 
 <% if (canEdit) { %>

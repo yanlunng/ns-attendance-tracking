@@ -13,7 +13,26 @@ const POSITION_HEADERS = ['position descr', 'position'];
 // Sheet names preferred over "just take the first sheet", checked case-insensitively.
 const PREFERRED_SHEET_NAMES = ['ehrnominal'];
 
-const GROUP_CODES = ['KAH', 'RBS', 'PSTAR', 'FP'];
+const SUBUNIT_GROUP_CODES = ['KAH', 'RBS', 'PSTAR', 'FP'];
+const GROUP_CODES = [...SUBUNIT_GROUP_CODES, 'HQ', 'DVR'];
+
+// Position overrides Sub Unit 1 when it indicates a battery-wide functional
+// role rather than a specific fire unit's combat crew — e.g. Lim Sheng Long's
+// Sub Unit 1 says RBS, but his Position Descr ("DVR") means he's actually
+// battalion transport, not an RBS gun-crew member.
+const DVR_POSITIONS = ['DVR', 'AFV DVR'];
+const HQ_POSITIONS = [
+  'ADMIN SUPVR',
+  'SUP ASST(GE)',
+  'SUP SUPVR(ORD)',
+  'SUP SUPVR',
+  'BQMS',
+  'MT SPEC',
+  'AUTO SPEC TECH',
+  'AUTO SPEC TECH(ADV)',
+  'GRD COMMS TECH',
+  'SIG',
+];
 
 function normalizeHeader(h) {
   return String(h || '').trim().toLowerCase();
@@ -53,11 +72,20 @@ function parseDob(value) {
   return null;
 }
 
-/** KAH/RBS/PSTAR/FP appear as substrings of the Sub Unit 1 text, e.g. "RBS ADA BTY (NS)-A BTY". */
-function deriveGroup(subunit1Text) {
+/**
+ * KAH/RBS/PSTAR/FP appear as substrings of the Sub Unit 1 text, e.g.
+ * "RBS ADA BTY (NS)-A BTY" — unless the position overrides it: DVR/AFV DVR
+ * always become "DVR", and a fixed list of admin/logistics positions always
+ * become "HQ", regardless of which sub-unit's roster they're listed under.
+ */
+function deriveGroup(subunit1Text, positionDescr) {
+  const pos = String(positionDescr || '').toUpperCase().trim();
+  if (DVR_POSITIONS.includes(pos)) return 'DVR';
+  if (HQ_POSITIONS.includes(pos)) return 'HQ';
+
   if (!subunit1Text) return null;
   const upper = String(subunit1Text).toUpperCase();
-  return GROUP_CODES.find((code) => upper.includes(code)) || null;
+  return SUBUNIT_GROUP_CODES.find((code) => upper.includes(code)) || null;
 }
 
 /** True if the sheet's Deferment Status column text mentions "deferred". */
@@ -144,6 +172,7 @@ async function parseRosterWorkbook(buffer) {
     const subunit1 = subunit1Col !== -1 ? cellText(row.getCell(subunit1Col).value) : null;
     const defermentText = defermentCol !== -1 ? cellText(row.getCell(defermentCol).value) : null;
     const phaseText = phaseCol !== -1 ? cellText(row.getCell(phaseCol).value) : null;
+    const positionText = positionCol !== -1 ? cellText(row.getCell(positionCol).value) : null;
 
     people.push({
       name,
@@ -152,10 +181,10 @@ async function parseRosterWorkbook(buffer) {
       date_of_birth: dobCol !== -1 ? parseDob(row.getCell(dobCol).value) : null,
       mobile: mobileCol !== -1 ? cellText(row.getCell(mobileCol).value) : null,
       subunit1_raw: subunit1,
-      group_code: deriveGroup(subunit1),
+      group_code: deriveGroup(subunit1, positionText),
       is_deferred: deriveDeferred(defermentText) ? 1 : 0,
       is_commander_phase: deriveCommanderPhase(phaseText) ? 1 : 0,
-      position_descr: positionCol !== -1 ? cellText(row.getCell(positionCol).value) : null,
+      position_descr: positionText,
       extra: Object.keys(extra).length ? JSON.stringify(extra) : null,
     });
   });

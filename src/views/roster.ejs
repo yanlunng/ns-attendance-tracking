@@ -131,6 +131,20 @@
   </form>
 </div>
 
+<div class="upload-box">
+  <h2>Outfield exercise dates</h2>
+  <p class="hint">
+    Anyone with an <strong>approved</strong> Off or MC covering any day in this range is excluded
+    from Outfield Designation entirely — pulled out of any slot they're holding too. Pending
+    requests don't count; only approved is treated as definite. Leave blank to disable.
+  </p>
+  <form method="post" action="/roster/settings/outfield-dates">
+    <label>Outfield start date <input type="date" name="outfield_start_date" value="<%= outfieldStart %>" /></label>
+    <label>Outfield end date <input type="date" name="outfield_end_date" value="<%= outfieldEnd %>" /></label>
+    <button type="submit">Save</button>
+  </form>
+</div>
+
 <h2>Current roster (<%= roster.length %> total, <%= roster.filter(p => !p.is_deferred && !p.is_ict_cancelled).length %> counted this cycle)</h2>
 <p class="hint">
   Deferred/ICT Cancelled people are excluded from Mark Attendance and Summary's total strength for

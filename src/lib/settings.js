@@ -5,6 +5,8 @@ const DEFAULTS = {
   cycle_start_date: '',
   cycle_end_date: '',
   mainbody_phase_start_date: '',
+  outfield_start_date: '',
+  outfield_end_date: '',
 };
 
 function getSetting(key) {

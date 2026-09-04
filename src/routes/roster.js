@@ -29,6 +29,8 @@ function cyclePageData() {
     cycleStart: getSetting('cycle_start_date') || '',
     cycleEnd: getSetting('cycle_end_date') || '',
     mainBodyStart: getSetting('mainbody_phase_start_date') || '',
+    outfieldStart: getSetting('outfield_start_date') || '',
+    outfieldEnd: getSetting('outfield_end_date') || '',
     countWeekends: getCountWeekends(),
   };
 }
@@ -104,6 +106,18 @@ router.post('/roster/upload', requireAdmin, upload.single('file'), async (req, r
 
 router.post('/roster/settings/weekends', requireAdmin, (req, res) => {
   setSetting('count_weekends', req.body.count_weekends === '1' ? '1' : '0');
+  res.redirect('/roster');
+});
+
+router.post('/roster/settings/outfield-dates', requireAdmin, (req, res) => {
+  const { outfield_start_date: start, outfield_end_date: end } = req.body;
+
+  if (start && !/^\d{4}-\d{2}-\d{2}$/.test(start)) return renderRosterError(res, 'Outfield start date is not valid.');
+  if (end && !/^\d{4}-\d{2}-\d{2}$/.test(end)) return renderRosterError(res, 'Outfield end date is not valid.');
+  if (start && end && start > end) return renderRosterError(res, 'Outfield start date must be on or before the end date.');
+
+  setSetting('outfield_start_date', start || '');
+  setSetting('outfield_end_date', end || '');
   res.redirect('/roster');
 });
 
