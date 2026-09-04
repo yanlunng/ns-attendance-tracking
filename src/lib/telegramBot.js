@@ -44,11 +44,8 @@ function getLinkedUser(chatId) {
     .get(chatId);
 }
 
-const NON_KAH_LINK_CAP = 1;
-const KAH_LINK_CAP = 5;
-
 function linkCapFor(username) {
-  return db.isKahUsername(username) ? KAH_LINK_CAP : NON_KAH_LINK_CAP;
+  return db.telegramLinkCapFor(username);
 }
 
 function countLinks(userId) {

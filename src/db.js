@@ -200,15 +200,15 @@ function bootstrapAdmin() {
 // an admin sets each one's password via the Users page, after which the
 // holder can change it themselves at their own discretion.
 const KAH_ROLES = [
-  { username: 'bc', role: 'admin' },
-  { username: 'bsm', role: 'admin' },
-  { username: 'b2ic', role: 'editor' },
-  { username: 'pc', role: 'editor' },
-  { username: 'ps', role: 'editor' },
-  { username: 'p2ic', role: 'editor' },
-  { username: 'fpcom', role: 'editor' },
-  { username: 'rcom', role: 'editor' },
-  { username: 'fucom', role: 'editor' },
+  { username: 'bc', role: 'admin', telegramLinkCap: 3 },
+  { username: 'bsm', role: 'admin', telegramLinkCap: 3 },
+  { username: 'b2ic', role: 'editor', telegramLinkCap: 3 },
+  { username: 'pc', role: 'editor', telegramLinkCap: 4 },
+  { username: 'ps', role: 'editor', telegramLinkCap: 4 },
+  { username: 'p2ic', role: 'editor', telegramLinkCap: 4 },
+  { username: 'fpcom', role: 'editor', telegramLinkCap: 12 },
+  { username: 'rcom', role: 'editor', telegramLinkCap: 4 },
+  { username: 'fucom', role: 'editor', telegramLinkCap: 12 },
 ];
 
 function bootstrapKahRoles() {
@@ -232,6 +232,13 @@ function isKahUsername(username) {
   return KAH_USERNAMES.has(username);
 }
 
+const KAH_LINK_CAPS = new Map(KAH_ROLES.map((r) => [r.username, r.telegramLinkCap]));
+const DEFAULT_TELEGRAM_LINK_CAP = 1;
+function telegramLinkCapFor(username) {
+  return KAH_LINK_CAPS.get(username) ?? DEFAULT_TELEGRAM_LINK_CAP;
+}
+
 module.exports = db;
 module.exports.KAH_ROLES = KAH_ROLES;
 module.exports.isKahUsername = isKahUsername;
+module.exports.telegramLinkCapFor = telegramLinkCapFor;
