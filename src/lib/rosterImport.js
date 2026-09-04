@@ -1,6 +1,6 @@
 const ExcelJS = require('exceljs');
 
-const NAME_HEADERS = ['name', 'full name', 'fullname', 'nominal roll', 'personnel'];
+const NAME_HEADERS = ['name', 'full name', 'fullname', 'complete name', 'nominal roll', 'personnel'];
 const ID_HEADERS = ['id', 'ref id', 'staff id', 'rank', 'rank/id', 'employee id', 'nric'];
 const UNIT_HEADERS = ['unit', 'department', 'dept', 'section', 'team'];
 
