@@ -82,7 +82,9 @@ echo "== Opening firewall for HTTP/HTTPS (restrict --source-ranges if not public
 gcloud compute firewall-rules create "allow-${VM_NAME}" \
   --allow=tcp:80,tcp:443 \
   --target-tags="$VM_NAME" \
-  --source-ranges=0.0.0.0/0 || true
+  --source-ranges=0.0.0.0/0 || \
+gcloud compute firewall-rules update "allow-${VM_NAME}" \
+  --allow=tcp:80,tcp:443
 
 echo "== Pulling and running the container on the VM =="
 if [[ -n "$DOMAIN" ]]; then
