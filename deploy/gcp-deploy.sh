@@ -80,6 +80,7 @@ gcloud compute firewall-rules create "allow-${VM_NAME}" \
 
 echo "== Pulling and running the container on the VM =="
 gcloud compute ssh "$VM_NAME" -- "
+  docker-credential-gcr configure-docker --registries=${REGION}-docker.pkg.dev
   docker rm -f ${VM_NAME} 2>/dev/null || true
   docker pull ${IMAGE}
   docker run -d --name ${VM_NAME} \
