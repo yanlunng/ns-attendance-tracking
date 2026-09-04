@@ -394,4 +394,23 @@ function getLinkStatus(userId, username) {
   return { count: countLinks(userId), cap: linkCapFor(username), isKah: db.isKahUsername(username) };
 }
 
-module.exports = { handleUpdate, generateLinkCode, getSession, setSession, clearSession, getLinkStatus };
+// Shown in Telegram's "/" command menu — kept in sync with the dispatch list in handleMessage.
+const BOT_COMMANDS = [
+  { command: 'mark', description: 'Mark attendance for a date' },
+  { command: 'summary', description: 'Copy-paste strength report for WhatsApp' },
+  { command: 'link', description: 'Link this chat to your account (needs a code)' },
+  { command: 'unlink', description: 'Unlink this chat' },
+  { command: 'whoami', description: 'Show which account this chat is linked to' },
+  { command: 'cancel', description: 'Cancel whatever you were doing' },
+  { command: 'start', description: 'How to get started' },
+];
+
+module.exports = {
+  handleUpdate,
+  generateLinkCode,
+  getSession,
+  setSession,
+  clearSession,
+  getLinkStatus,
+  BOT_COMMANDS,
+};

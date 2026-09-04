@@ -17,6 +17,7 @@ const myAttendanceRoutes = require('./routes/myAttendance');
 const outfieldRoutes = require('./routes/outfield');
 const telegramRoutes = require('./routes/telegram');
 const telegramApi = require('./lib/telegramApi');
+const { BOT_COMMANDS } = require('./lib/telegramBot');
 
 const app = express();
 
@@ -77,6 +78,11 @@ app.listen(port, () => {
   console.log(`Attendance app listening on http://localhost:${port}`);
 
   if (telegramApi.enabled()) {
+    telegramApi
+      .setMyCommands(BOT_COMMANDS)
+      .then(() => console.log('[telegram] Command menu registered.'))
+      .catch((err) => console.error('[telegram] Failed to register command menu:', err.message));
+
     const publicUrl = process.env.PUBLIC_URL;
     if (!publicUrl) {
       console.warn('[telegram] TELEGRAM_BOT_TOKEN is set but PUBLIC_URL is not — skipping webhook registration.');

@@ -39,6 +39,11 @@ async function setWebhook(url, secretToken) {
   return call('setWebhook', { url, secret_token: secretToken, allowed_updates: ['message', 'callback_query'] });
 }
 
+/** Populates the "/" command menu Telegram shows in the chat UI. */
+async function setMyCommands(commands) {
+  return call('setMyCommands', { commands });
+}
+
 /** Downloads a Telegram file (e.g. an MC photo) into the given local path. */
 async function downloadFile(fileId, destPath) {
   if (!enabled()) throw new Error('TELEGRAM_BOT_TOKEN is not set.');
@@ -55,4 +60,13 @@ function generateWebhookSecret() {
   return crypto.randomBytes(24).toString('hex');
 }
 
-module.exports = { enabled, sendMessage, answerCallbackQuery, inlineKeyboard, setWebhook, downloadFile, generateWebhookSecret };
+module.exports = {
+  enabled,
+  sendMessage,
+  answerCallbackQuery,
+  inlineKeyboard,
+  setWebhook,
+  setMyCommands,
+  downloadFile,
+  generateWebhookSecret,
+};
