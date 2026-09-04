@@ -55,14 +55,21 @@ echo "== Creating Artifact Registry repo (ok if it already exists) =="
 gcloud artifacts repositories create "$REPO_NAME" \
   --repository-format=docker --location="$REGION" || true
 
-echo "== Ensuring Cloud Build can push to Artifact Registry =="
+echo "== Ensuring Cloud Build can read its source upload and push images =="
 PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
-CLOUDBUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:${CLOUDBUILD_SA}" \
-  --role="roles/artifactregistry.writer" \
-  --condition=None \
-  --quiet
+COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+# Newer GCP projects run Cloud Build as the Compute Engine default service
+# account (not the classic @cloudbuild.gserviceaccount.com one) — it needs
+# read access to the uploaded source tarball plus write access to push the
+# built image, in addition to the artifactregistry.reader it already needs
+# to pull images onto the VM later in this script.
+for role in roles/storage.objectViewer roles/artifactregistry.writer roles/logging.logWriter; do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${COMPUTE_SA}" \
+    --role="$role" \
+    --condition=None \
+    --quiet
+done
 
 echo "== Building and pushing image via Cloud Build =="
 # Runs entirely inside Google's network (source is zipped and uploaded once,
@@ -78,15 +85,6 @@ gcloud compute instances create "$VM_NAME" \
   --boot-disk-size=20GB \
   --scopes=cloud-platform \
   --tags="$VM_NAME" || true
-
-echo "== Ensuring the VM can pull from Artifact Registry =="
-COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:${COMPUTE_SA}" \
-  --role="roles/artifactregistry.reader" \
-  --condition=None \
-  --quiet
 
 CURRENT_SCOPES=$(gcloud compute instances describe "$VM_NAME" --zone="$ZONE" --format='value(serviceAccounts[0].scopes)' 2>/dev/null || echo "")
 if [[ "$CURRENT_SCOPES" != *"cloud-platform"* ]]; then
