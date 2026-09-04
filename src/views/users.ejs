@@ -10,6 +10,7 @@
     <label>Role
       <select name="role">
         <option value="user">User</option>
+        <option value="editor">Editor</option>
         <option value="admin">Admin</option>
       </select>
     </label>
@@ -18,14 +19,21 @@
 </div>
 
 <table class="attendance-table">
-  <thead><tr><th>Username</th><th>Role</th><th>Created</th><th></th></tr></thead>
+  <thead><tr><th>Username</th><th>Role</th><th>Password</th><th>Created</th><th></th></tr></thead>
   <tbody>
     <% users.forEach(u => { %>
     <tr>
-      <td><%= u.username %></td>
-      <td><%= u.role %></td>
-      <td><%= u.created_at %></td>
+      <td data-label="Username"><%= u.username %></td>
+      <td data-label="Role"><%= u.role %></td>
+      <td data-label="Password">
+        <% if (u.needs_password) { %><span class="badge badge-warn">Not set</span><% } else { %><span class="badge badge-present">Set</span><% } %>
+      </td>
+      <td data-label="Created"><%= u.created_at %></td>
       <td>
+        <form method="post" action="/users/<%= u.id %>/set-password" class="set-password-form">
+          <input type="password" name="password" placeholder="new password" minlength="8" required />
+          <button type="submit"><%= u.needs_password ? 'Set password' : 'Reset password' %></button>
+        </form>
         <form method="post" action="/users/<%= u.id %>/delete" onsubmit="return confirm('Delete this user?')">
           <button type="submit" class="link-btn">Delete</button>
         </form>

@@ -10,6 +10,11 @@ const attendanceRoutes = require('./routes/attendance');
 const rosterRoutes = require('./routes/roster');
 const userRoutes = require('./routes/users');
 const exportRoutes = require('./routes/export');
+const establishmentRoutes = require('./routes/establishment');
+const approvalsRoutes = require('./routes/approvals');
+const accountRoutes = require('./routes/account');
+const myAttendanceRoutes = require('./routes/myAttendance');
+const outfieldRoutes = require('./routes/outfield');
 
 const app = express();
 
@@ -34,7 +39,7 @@ app.use((req, res, next) => {
 
 app.get('/', (req, res) => {
   if (!req.session.user) return res.redirect('/login');
-  res.redirect('/attendance');
+  res.redirect(req.session.user.role === 'self' ? '/my-attendance' : '/attendance');
 });
 
 app.use(authRoutes);
@@ -42,6 +47,11 @@ app.use(attendanceRoutes);
 app.use(rosterRoutes);
 app.use(userRoutes);
 app.use(exportRoutes);
+app.use(establishmentRoutes);
+app.use(approvalsRoutes);
+app.use(accountRoutes);
+app.use(myAttendanceRoutes);
+app.use(outfieldRoutes);
 
 app.use((req, res) => {
   res.status(404).render('error', { message: 'Page not found.' });

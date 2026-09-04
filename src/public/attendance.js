@@ -11,6 +11,20 @@
   var hiddenInputsBox = document.getElementById('present-hidden-inputs');
   var presentCountHint = document.getElementById('present-count-hint');
 
+  window.toggleOffDetail = function (statusSelect) {
+    var row = statusSelect.closest('tr');
+    var offDetail = row && row.querySelector('.off-detail');
+    if (!offDetail) return;
+    offDetail.style.display = statusSelect.value === 'off' ? '' : 'none';
+  };
+
+  window.toggleOffTime = function (periodSelect) {
+    var offDetail = periodSelect.closest('.off-detail');
+    var timeInput = offDetail && offDetail.querySelector('input[type=time]');
+    if (!timeInput) return;
+    timeInput.style.display = periodSelect.value === 'TIME' ? '' : 'none';
+  };
+
   function updatePresentCount() {
     var presentCount = window.TOTAL_PEOPLE - exceptionIds.size;
     presentCountHint.textContent = presentCount + ' of ' + window.TOTAL_PEOPLE + ' default to Present and need no action.';
@@ -34,11 +48,10 @@
     }
     resultsBox.innerHTML = matches
       .map(function (p) {
-        var meta = [p.ref_id, p.unit].filter(Boolean).join(' · ');
         return (
           '<div class="search-result" data-id="' + p.id + '">' +
           '<span class="sr-name">' + escapeHtml(p.name) + '</span>' +
-          (meta ? '<span class="sr-meta">' + escapeHtml(meta) + '</span>' : '') +
+          (p.ref_id ? '<span class="sr-meta">' + escapeHtml(p.ref_id) + '</span>' : '') +
           '</div>'
         );
       })
@@ -57,11 +70,24 @@
     var row = document.createElement('tr');
     row.setAttribute('data-id', id);
     row.innerHTML =
-      '<td>' + escapeHtml(person.name) + '</td>' +
-      '<td>' + escapeHtml(person.ref_id || '') + '</td>' +
-      '<td>' + escapeHtml(person.unit || '') + '</td>' +
-      '<td><select name="status_' + id + '"><option value="off">Off</option><option value="leave">Leave</option></select></td>' +
-      '<td><input type="text" name="remarks_' + id + '" placeholder="reason (optional)" /></td>' +
+      '<td data-label="Name">' + escapeHtml(person.name) + '</td>' +
+      '<td data-label="Rank">' + escapeHtml(person.ref_id || '') + '</td>' +
+      '<td data-label="Status">' +
+        '<select name="status_' + id + '" onchange="window.toggleOffDetail(this)">' +
+          '<option value="off">Off</option>' +
+          '<option value="mc">MC</option>' +
+          (window.CAN_MARK_OUTPRO ? '<option value="outpro">1st Day Outpro</option>' : '') +
+        '</select>' +
+      '</td>' +
+      '<td data-label="Off period" class="off-detail">' +
+        '<select name="off_period_' + id + '" onchange="window.toggleOffTime(this)">' +
+          '<option value="AM">AM</option>' +
+          '<option value="PM">PM</option>' +
+          '<option value="TIME">Time-off</option>' +
+        '</select>' +
+        '<input type="time" name="off_time_' + id + '" style="display:none" />' +
+      '</td>' +
+      '<td data-label="Reason"><input type="text" name="remarks_' + id + '" placeholder="reason (optional)" /></td>' +
       '<td><button type="button" class="link-btn remove-exception" data-id="' + id + '">Remove</button></td>';
     exceptionsBody.appendChild(row);
 

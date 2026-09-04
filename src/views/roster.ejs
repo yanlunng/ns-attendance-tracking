@@ -2,32 +2,131 @@
 <h1>Nominal Roll / Roster</h1>
 
 <% if (error) { %><p class="error"><%= error %></p><% } %>
-<% if (imported) { %><p class="notice">Imported <%= imported %> people.</p><% } %>
+<% if (imported) { %>
+  <p class="notice">
+    Imported <%= imported %> people.<% if (removed) { %> Removed <%= removed %> people no longer in the sheet (their attendance history was removed with them).<% } %>
+  </p>
+<% } %>
+
+<% if (freshCredentials && freshCredentials.length > 0) { %>
+  <div class="upload-box">
+    <h2>New personal accounts created (<%= freshCredentials.length %>)</h2>
+    <p class="hint">
+      Username = mobile number, password = date of birth (MMDDYYYY) — both computed from the
+      roster sheet, so this list is just for your reference and can be recomputed from the sheet
+      if you lose it. Each person can change their password after logging in under "Change password".
+    </p>
+    <table class="attendance-table">
+      <thead><tr><th>Name</th><th>Username</th><th>Password</th></tr></thead>
+      <tbody>
+        <% freshCredentials.forEach(c => { %>
+        <tr>
+          <td data-label="Name"><%= c.name %></td>
+          <td data-label="Username"><%= c.username %></td>
+          <td data-label="Password">
+            <code><%= c.password %></code>
+            <% if (c.usedDefaultPassword) { %><span class="badge badge-warn">no DOB on file</span><% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<% if (skippedAccounts && skippedAccounts.length > 0) { %>
+  <div class="upload-box">
+    <h2>Couldn't create an account for (<%= skippedAccounts.length %>)</h2>
+    <p class="hint">Missing mobile number and/or date of birth in the sheet — fix the sheet and re-upload to provision them.</p>
+    <table class="attendance-table">
+      <thead><tr><th>Name</th><th>Reason</th></tr></thead>
+      <tbody>
+        <% skippedAccounts.forEach(s => { %>
+        <tr><td data-label="Name"><%= s.name %></td><td data-label="Reason"><%= s.reason %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
 
 <div class="upload-box">
   <h2>Upload Excel roster</h2>
   <p class="hint">
-    First sheet, header row on row 1. Requires a <strong>Name</strong> column
-    (or "Full Name" / "Personnel" / "Nominal Roll"). Optional columns:
-    ID/Rank/Staff ID, Unit/Department. Any other columns are kept as extra data.
+    Prefers a sheet named "ehrNominal" (falls back to the first sheet). Requires a
+    <strong>Name</strong> column (or "Full Name" / "Complete Name" / "Personnel" / "Nominal Roll").
+    Optional columns: ID/Rank/Staff ID, Unit/Department, Date of Birth, Sub Unit 1 (used to derive
+    the KAH/RBS/PSTAR/FP group), Mobile (used to auto-create each person's own read-only login),
+    Phases (Commander Phase vs Main Body — see below). Any other columns are kept as extra data.
+  </p>
+  <p class="hint">
+    <strong>Replace</strong> makes the sheet the complete roster — anyone not in it is deleted,
+    along with their attendance history, so the roster doesn't accumulate people who've left.
+    People who stay keep their history, matched by Full Name + Date of Birth.
+    <strong>Append</strong> only adds/updates people and never deletes anyone.
   </p>
   <form method="post" action="/roster/upload" enctype="multipart/form-data">
     <input type="file" name="file" accept=".xlsx,.xls" required />
-    <label><input type="radio" name="mode" value="replace" checked /> Replace current roster</label>
-    <label><input type="radio" name="mode" value="append" /> Append to current roster</label>
+    <label>Cycle start date <input type="date" name="start_date" value="<%= cycleStart %>" required /></label>
+    <label>Cycle end date <input type="date" name="end_date" value="<%= cycleEnd %>" required /></label>
+    <label>Main Body Phase start date
+      <input type="date" name="mainbody_start_date" value="<%= mainBodyStart %>" />
+    </label>
+    <p class="hint">
+      Leave blank to default to the next Monday on/after the cycle start date. Everyone not in
+      "Commander Phase" (per the sheet's Phases column) is excluded from Mark Attendance/Summary
+      until this date — change it if a public holiday pushes the real report date.
+    </p>
+    <label class="inline-label"><input type="radio" name="mode" value="replace" checked /> Replace current roster</label>
+    <label class="inline-label"><input type="radio" name="mode" value="append" /> Append to current roster</label>
     <button type="submit">Upload</button>
   </form>
 </div>
 
-<h2>Current roster (<%= roster.length %>)</h2>
+<div class="upload-box">
+  <h2>Weekend setting</h2>
+  <p class="hint">
+    When off, Saturdays/Sundays need no attendance marking anywhere in the app (this is the
+    default). Turning it on treats every day, including weekends, as a normal working day.
+  </p>
+  <form method="post" action="/roster/settings/weekends">
+    <label class="inline-label">
+      <input type="checkbox" name="count_weekends" value="1" <%= countWeekends ? 'checked' : '' %> />
+      Count weekends as working days
+    </label>
+    <button type="submit">Save</button>
+  </form>
+</div>
+
+<h2>Current roster (<%= roster.length %> total, <%= roster.filter(p => !p.is_deferred && !p.is_ict_cancelled).length %> counted this cycle)</h2>
+<p class="hint">
+  Deferred/ICT Cancelled people are excluded from Mark Attendance and Summary's total strength for
+  this cycle. Both reset to auto-suggested/off on every roster upload — re-apply as needed each cycle.
+</p>
 <table class="attendance-table">
-  <thead><tr><th>Name</th><th>ID</th><th>Unit</th><th></th></tr></thead>
+  <thead><tr><th>Name</th><th>Rank</th><th>Group</th><th>Phase</th><th>Deferred</th><th>ICT Cancelled</th><th></th></tr></thead>
   <tbody>
     <% roster.forEach(person => { %>
     <tr>
-      <td><%= person.name %></td>
-      <td><%= person.ref_id || '' %></td>
-      <td><%= person.unit || '' %></td>
+      <td data-label="Name"><%= person.name %></td>
+      <td data-label="Rank"><%= person.ref_id || '' %></td>
+      <td data-label="Group"><%= person.group_code || '—' %></td>
+      <td data-label="Phase"><%= person.is_commander_phase ? 'Commander' : 'Main Body' %></td>
+      <td data-label="Deferred">
+        <form method="post" action="/roster/<%= person.id %>/deferred">
+          <input type="hidden" name="value" value="<%= person.is_deferred ? '0' : '1' %>" />
+          <label class="inline-label">
+            <input type="checkbox" onchange="this.form.submit()" <%= person.is_deferred ? 'checked' : '' %> />
+          </label>
+        </form>
+      </td>
+      <td data-label="ICT Cancelled">
+        <form method="post" action="/roster/<%= person.id %>/ict-cancelled">
+          <input type="hidden" name="value" value="<%= person.is_ict_cancelled ? '0' : '1' %>" />
+          <label class="inline-label">
+            <input type="checkbox" onchange="this.form.submit()" <%= person.is_ict_cancelled ? 'checked' : '' %> />
+          </label>
+        </form>
+      </td>
       <td>
         <form method="post" action="/roster/<%= person.id %>/remove" onsubmit="return confirm('Remove this person from the roster?')">
           <button type="submit" class="link-btn">Remove</button>

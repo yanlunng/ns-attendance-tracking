@@ -1,0 +1,77 @@
+<%- include('partials/header') %>
+<h1>Pending Approvals</h1>
+<p class="hint">
+  When multiple people agree on the same person/date/detail, they're grouped into one decision
+  below — approving or rejecting applies to everyone who agreed.
+</p>
+
+<h2>Off requests</h2>
+<p class="hint">Off requests don't count in Summary's numbers until approved, including future-dated ones submitted ahead of time.</p>
+<% if (pendingOff.length === 0) { %>
+  <p class="empty">Nothing pending.</p>
+<% } else { %>
+<table class="attendance-table">
+  <thead>
+    <tr><th>Date</th><th>Name</th><th>Rank</th><th>Period</th><th>Submitted by</th><th>Reason(s)</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% pendingOff.forEach(g => { %>
+    <tr>
+      <td data-label="Date"><%= g.date %></td>
+      <td data-label="Name"><%= g.personName %></td>
+      <td data-label="Rank"><%= g.personRank || '' %></td>
+      <td data-label="Period"><%= g.offPeriod === 'TIME' ? `From ${g.offTime}` : g.offPeriod %></td>
+      <td data-label="Submitted by"><%= g.submitters.join(', ') %></td>
+      <td data-label="Reason(s)"><%= g.remarksList.join('; ') %></td>
+      <td>
+        <form method="post" action="/approvals/group/approve" class="inline">
+          <input type="hidden" name="ids" value="<%= g.submissionIds.join(',') %>" />
+          <button type="submit">Approve<%= g.submitters.length > 1 ? ` all ${g.submitters.length}` : '' %></button>
+        </form>
+        <form method="post" action="/approvals/group/reject" class="inline">
+          <input type="hidden" name="ids" value="<%= g.submissionIds.join(',') %>" />
+          <button type="submit" class="link-btn">Reject<%= g.submitters.length > 1 ? ` all ${g.submitters.length}` : '' %></button>
+        </form>
+      </td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>
+
+<h2>1st Day Outpro</h2>
+<p class="hint">
+  Marking someone outpro excludes them from every day after this date once approved — they stay
+  in the count for the outpro day itself either way.
+</p>
+<% if (pendingOutpro.length === 0) { %>
+  <p class="empty">Nothing pending.</p>
+<% } else { %>
+<table class="attendance-table">
+  <thead>
+    <tr><th>Date</th><th>Name</th><th>Rank</th><th>Submitted by</th><th>Reason(s)</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% pendingOutpro.forEach(g => { %>
+    <tr>
+      <td data-label="Date"><%= g.date %></td>
+      <td data-label="Name"><%= g.personName %></td>
+      <td data-label="Rank"><%= g.personRank || '' %></td>
+      <td data-label="Submitted by"><%= g.submitters.join(', ') %></td>
+      <td data-label="Reason(s)"><%= g.remarksList.join('; ') %></td>
+      <td>
+        <form method="post" action="/approvals/group/approve" class="inline">
+          <input type="hidden" name="ids" value="<%= g.submissionIds.join(',') %>" />
+          <button type="submit">Approve<%= g.submitters.length > 1 ? ` all ${g.submitters.length}` : '' %></button>
+        </form>
+        <form method="post" action="/approvals/group/reject" class="inline">
+          <input type="hidden" name="ids" value="<%= g.submissionIds.join(',') %>" />
+          <button type="submit" class="link-btn">Reject<%= g.submitters.length > 1 ? ` all ${g.submitters.length}` : '' %></button>
+        </form>
+      </td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>
+<%- include('partials/footer') %>

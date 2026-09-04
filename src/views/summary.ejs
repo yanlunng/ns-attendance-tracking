@@ -2,25 +2,46 @@
 <div class="page-head">
   <h1>Attendance Summary</h1>
   <form method="get" action="/summary" class="date-picker">
-    <label>Date <input type="date" name="date" value="<%= summary.date %>" max="<%= todayStr %>" onchange="this.form.submit()" /></label>
+    <label>Date <input type="date" name="date" value="<%= date %>" min="<%= cycle.start || '' %>" max="<%= cycle.end || '' %>" onchange="this.form.submit()" /></label>
   </form>
 </div>
+
+<% if (weekendBlocked) { %>
+  <p class="banner-warn">
+    <%= date %> is a weekend — no attendance was expected, so there's nothing to summarize. An
+    admin can turn on "Count weekends as working days" on the Roster page if this cycle needs
+    weekend tracking.
+  </p>
+<% } else { %>
+
+<% if (phaseStagger) { %>
+  <p class="hint">
+    <%= phaseStagger.excludedCount %> Main Body personnel aren't in the total strength yet — they
+    join starting <%= phaseStagger.mainBodyStart %> (Commander Phase only until then).
+  </p>
+<% } %>
 
 <div class="stats">
   <div class="stat"><span><%= summary.stats.reported %>/<%= summary.stats.total %></span>reported</div>
   <div class="stat"><span><%= summary.stats.present %></span>present</div>
-  <div class="stat"><span><%= summary.stats.off %></span>off</div>
-  <div class="stat"><span><%= summary.stats.leave %></span>leave</div>
+  <div class="stat"><span><%= summary.stats.offApproved %></span>off (approved)</div>
+  <div class="stat <%= summary.stats.offPending > 0 ? 'stat-warn' : '' %>"><span><%= summary.stats.offPending %></span>off (pending)</div>
+  <div class="stat"><span><%= summary.stats.mc %></span>mc</div>
+  <div class="stat"><span><%= summary.stats.outproApproved %></span>outpro (approved)</div>
+  <div class="stat <%= summary.stats.outproPending > 0 ? 'stat-warn' : '' %>"><span><%= summary.stats.outproPending %></span>outpro (pending)</div>
   <div class="stat <%= summary.stats.conflicts > 0 ? 'stat-warn' : '' %>"><span><%= summary.stats.conflicts %></span>conflicts</div>
 </div>
 
-<p><a href="/export?date=<%= summary.date %>">Download this summary as Excel</a></p>
+<p>
+  <a href="/export?date=<%= date %>">Download this summary as Excel</a>
+  <% if (isAdmin && (summary.stats.offPending > 0 || summary.stats.outproPending > 0)) { %> · <a href="/approvals">Review pending approvals</a><% } %>
+</p>
 
 <table class="attendance-table">
   <thead>
     <tr>
       <th>Name</th>
-      <th>ID</th>
+      <th>Rank</th>
       <th>Unit</th>
       <th>Merged Status</th>
       <th>Submitted by</th>
@@ -29,25 +50,49 @@
   <tbody>
     <% summary.rows.forEach(row => { %>
     <tr class="<%= row.conflict ? 'row-conflict' : row.unreported ? 'row-unreported' : '' %>">
-      <td><%= row.person.name %></td>
-      <td><%= row.person.ref_id || '' %></td>
-      <td><%= row.person.unit || '' %></td>
-      <td>
+      <td data-label="Name"><%= row.person.name %></td>
+      <td data-label="Rank"><%= row.person.ref_id || '' %></td>
+      <td data-label="Unit"><%= row.person.unit || '' %></td>
+      <td data-label="Merged Status">
         <% if (row.unreported) { %>
           <span class="badge badge-warn">Not reported</span>
         <% } else if (row.conflict) { %>
           <span class="badge badge-danger">Conflict</span>
+        <% } else if (row.status === 'off') { %>
+          <span class="badge badge-off">Off <%= row.offPeriod === 'TIME' ? `(from ${row.offTime})` : `(${row.offPeriod})` %></span>
+          <span class="badge <%= row.approvalState === 'approved' ? 'badge-present' : 'badge-warn' %>"><%= row.approvalState %></span>
+        <% } else if (row.status === 'mc') { %>
+          <span class="badge badge-mc">MC</span>
+          <% if (row.missingAttachment) { %>
+            <span class="badge badge-warn">Missing attachment</span>
+            <form method="post" action="/attendance/submission/<%= row.mcSubmissionId %>/attachment" enctype="multipart/form-data" class="attachment-form">
+              <input type="hidden" name="returnDate" value="<%= date %>" />
+              <input type="file" name="attachment" required />
+              <button type="submit">Attach</button>
+            </form>
+          <% } else { %>
+            <a href="/attendance/attachment/<%= row.mcSubmissionId %>">View attachment</a>
+          <% } %>
+        <% } else if (row.status === 'outpro') { %>
+          <span class="badge badge-outpro">1st Day Outpro</span>
+          <span class="badge <%= row.approvalState === 'approved' ? 'badge-present' : 'badge-warn' %>"><%= row.approvalState %></span>
         <% } else { %>
           <span class="badge badge-<%= row.status %>"><%= row.status %></span>
         <% } %>
       </td>
-      <td>
+      <td data-label="Submitted by">
         <% row.submissions.forEach(s => { %>
-          <div class="submitter-line"><%= s.username %>: <strong><%= s.status %></strong><% if (s.remarks) { %> — <%= s.remarks %><% } %></div>
+          <div class="submitter-line">
+            <%= s.username %>:
+            <strong><%= s.status %><% if (s.status === 'off') { %> (<%= s.off_period === 'TIME' ? `from ${s.off_time}` : s.off_period %>)<% } %></strong>
+            <% if (s.status === 'off' || s.status === 'outpro') { %>· <%= s.approval_status %><% } %>
+            <% if (s.remarks) { %> — <%= s.remarks %><% } %>
+          </div>
         <% }) %>
       </td>
     </tr>
     <% }) %>
   </tbody>
 </table>
+<% } %>
 <%- include('partials/footer') %>

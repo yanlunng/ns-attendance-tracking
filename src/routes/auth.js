@@ -12,7 +12,13 @@ router.get('/login', (req, res) => {
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username || '');
-  if (!user || !bcrypt.compareSync(password || '', user.password_hash)) {
+  if (!user) {
+    return res.status(401).render('login', { error: 'Invalid username or password.' });
+  }
+  if (user.needs_password) {
+    return res.status(401).render('login', { error: "This account's password hasn't been set up yet — ask an admin to set one." });
+  }
+  if (!bcrypt.compareSync(password || '', user.password_hash)) {
     return res.status(401).render('login', { error: 'Invalid username or password.' });
   }
   req.session.user = { id: user.id, username: user.username, role: user.role };

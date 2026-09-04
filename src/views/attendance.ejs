@@ -2,23 +2,48 @@
 <div class="page-head">
   <h1>Mark Attendance</h1>
   <form method="get" action="/attendance" class="date-picker">
-    <label>Date <input type="date" name="date" value="<%= date %>" max="<%= todayStr %>" onchange="this.form.submit()" /></label>
+    <label>Date <input type="date" name="date" value="<%= date %>" min="<%= cycle.start || '' %>" max="<%= cycle.end || '' %>" onchange="this.form.submit()" /></label>
   </form>
 </div>
 
+<% if (weekendBlocked) { %>
+  <p class="banner-warn">
+    <%= date %> is a weekend — no attendance marking is required by default. An admin can turn on
+    "Count weekends as working days" on the Roster page if this cycle needs weekend tracking.
+  </p>
+<% } else { %>
+
+<% const canMarkOutpro = ['admin', 'editor'].includes(currentUser.role); %>
+
+<% if (phaseStagger) { %>
+  <p class="hint">
+    <%= phaseStagger.excludedCount %> Main Body personnel aren't in the count yet — they join
+    starting <%= phaseStagger.mainBodyStart %> (Commander Phase only until then).
+  </p>
+<% } %>
+
 <% if (typeof saved !== 'undefined' && saved) { %>
   <p class="notice">Saved your attendance report for <%= date %>.</p>
+<% } else if (hasSubmitted) { %>
+  <p class="notice">You already saved a report for <%= date %> (last updated <%= lastSubmittedAt %>). Changes below aren't recorded until you save again.</p>
+<% } else if (rows.length > 0) { %>
+  <p class="banner-warn">You haven't saved a report for <%= date %> yet — it won't show up on the Summary page until you click "Save my attendance report" below, even though everyone defaults to Present here.</p>
 <% } %>
 
 <p class="hint">
   Everyone defaults to <strong>Present</strong> for <strong><%= date %></strong>. Search below to
-  flag anyone who's Off or on Leave — you don't need to touch anyone else. Your submission is
-  independent; it's merged with everyone else's on the
+  flag anyone who's Off, on MC<%= canMarkOutpro ? ', or on their 1st day of outpro' : '' %> — you
+  don't need to touch anyone else. Off requests can be dated ahead within this cycle and need
+  admin approval before they count; MC entries can have proof attached later from the Summary
+  page. Your submission is independent; it's merged with everyone else's on the
   <a href="/summary?date=<%= date %>">Summary</a> page, and disagreements are flagged there.
 </p>
 
 <% if (rows.length === 0) { %>
-  <p class="empty">No roster uploaded yet. Ask an admin to upload the nominal roll under "Roster".</p>
+  <p class="empty">
+    No one is due to be marked for this date — either no roster is uploaded yet, or everyone
+    active has been deferred, ICT cancelled, or has already started outpro.
+  </p>
 <% } else {
      const exceptionsInitial = rows.filter(r => r.existing && r.existing.status !== 'present');
      const presentRows = rows.filter(r => !r.existing || r.existing.status === 'present');
@@ -27,7 +52,7 @@
   <input type="hidden" name="date" value="<%= date %>" />
 
   <div class="add-exception">
-    <label>Mark someone Off / on Leave
+    <label>Mark someone Off / MC<%= canMarkOutpro ? ' / 1st Day Outpro' : '' %>
       <input type="text" id="search-input" placeholder="Type a name…" autocomplete="off" />
     </label>
     <div id="search-results" class="search-results"></div>
@@ -35,28 +60,38 @@
 
   <table class="attendance-table" id="exceptions-table" style="<%= exceptionsInitial.length ? '' : 'display:none' %>">
     <thead>
-      <tr><th>Name</th><th>ID</th><th>Unit</th><th>Status</th><th>Reason</th><th></th></tr>
+      <tr><th>Name</th><th>Rank</th><th>Status</th><th>Off period</th><th>Reason</th><th></th></tr>
     </thead>
     <tbody id="exceptions-body">
       <% exceptionsInitial.forEach(({ person, existing }) => { %>
       <tr data-id="<%= person.id %>">
-        <td><%= person.name %></td>
-        <td><%= person.ref_id || '' %></td>
-        <td><%= person.unit || '' %></td>
-        <td>
-          <select name="status_<%= person.id %>">
+        <td data-label="Name"><%= person.name %></td>
+        <td data-label="Rank"><%= person.ref_id || '' %></td>
+        <td data-label="Status">
+          <select name="status_<%= person.id %>" onchange="window.toggleOffDetail(this)">
             <option value="off" <%= existing.status === 'off' ? 'selected' : '' %>>Off</option>
-            <option value="leave" <%= existing.status === 'leave' ? 'selected' : '' %>>Leave</option>
+            <option value="mc" <%= existing.status === 'mc' ? 'selected' : '' %>>MC</option>
+            <% if (canMarkOutpro) { %>
+              <option value="outpro" <%= existing.status === 'outpro' ? 'selected' : '' %>>1st Day Outpro</option>
+            <% } %>
           </select>
         </td>
-        <td><input type="text" name="remarks_<%= person.id %>" value="<%= existing.remarks || '' %>" placeholder="reason (optional)" /></td>
+        <td data-label="Off period" class="off-detail" style="<%= existing.status === 'off' ? '' : 'display:none' %>">
+          <select name="off_period_<%= person.id %>" onchange="window.toggleOffTime(this)">
+            <option value="AM" <%= existing.off_period === 'AM' ? 'selected' : '' %>>AM</option>
+            <option value="PM" <%= existing.off_period === 'PM' ? 'selected' : '' %>>PM</option>
+            <option value="TIME" <%= existing.off_period === 'TIME' ? 'selected' : '' %>>Time-off</option>
+          </select>
+          <input type="time" name="off_time_<%= person.id %>" value="<%= existing.off_time || '' %>" style="<%= existing.off_period === 'TIME' ? '' : 'display:none' %>" />
+        </td>
+        <td data-label="Reason"><input type="text" name="remarks_<%= person.id %>" value="<%= existing.remarks || '' %>" placeholder="reason (optional)" /></td>
         <td><button type="button" class="link-btn remove-exception" data-id="<%= person.id %>">Remove</button></td>
       </tr>
       <% }) %>
     </tbody>
   </table>
   <p id="no-exceptions-msg" class="empty" style="<%= exceptionsInitial.length ? 'display:none' : '' %>">
-    Nobody marked Off or on Leave yet — everyone is Present.
+    Nobody marked Off or MC<%= canMarkOutpro ? ', or Outpro,' : '' %> yet — everyone is Present.
   </p>
 
   <div id="present-hidden-inputs">
@@ -71,10 +106,12 @@
 </form>
 
 <script>
-  window.ROSTER = <%- JSON.stringify(rows.map(r => ({ id: r.person.id, name: r.person.name, unit: r.person.unit || '', ref_id: r.person.ref_id || '' }))) %>;
+  window.ROSTER = <%- JSON.stringify(rows.map(r => ({ id: r.person.id, name: r.person.name, ref_id: r.person.ref_id || '' }))) %>;
   window.INITIAL_EXCEPTION_IDS = <%- JSON.stringify(exceptionsInitial.map(r => r.person.id)) %>;
   window.TOTAL_PEOPLE = <%= rows.length %>;
+  window.CAN_MARK_OUTPRO = <%= canMarkOutpro %>;
 </script>
 <script src="/attendance.js"></script>
+<% } %>
 <% } %>
 <%- include('partials/footer') %>

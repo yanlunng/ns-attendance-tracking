@@ -1,0 +1,82 @@
+<%- include('partials/header') %>
+<h1>Outfield Designation</h1>
+
+<div class="tab-bar">
+  <% groups.forEach(g => { %>
+    <a href="/outfield?group=<%= g %>" class="tab <%= g === group ? 'tab-active' : '' %>"><%= g %></a>
+  <% }) %>
+</div>
+
+<% if (!board.hasStructure) { %>
+  <p class="hint">
+    No platoon/section structure has been defined for <%= group %> yet. The HQ/DVR pools below are
+    shared across every group — everyone eligible battery-wide starts sorted into one of them.
+  </p>
+<% } else { %>
+  <p class="hint">
+    HQ and DVR are shared pools across the whole battery, not just <%= group %>.
+    <% if (canEdit) { %>
+      Drag a card from a pool into a slot to assign them. Dropping onto an occupied slot bounces
+      the previous person back to HQ. Rank and name shown together.
+    <% } else { %>
+      Read-only view — ask an admin or editor to make changes.
+    <% } %>
+  </p>
+<% } %>
+
+<div class="outfield-board" data-group="<%= group %>">
+  <div class="outfield-staging">
+    <div class="outfield-pool">
+      <h3>HQ (<%= board.hq.people.length %>)</h3>
+      <div class="outfield-dropzone" data-section-id="<%= board.hq.id %>" data-slot="">
+        <% board.hq.people.forEach(p => { %>
+          <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %></div>
+        <% }) %>
+      </div>
+    </div>
+    <div class="outfield-pool">
+      <h3>DVR (<%= board.dvr.people.length %>)</h3>
+      <div class="outfield-dropzone" data-section-id="<%= board.dvr.id %>" data-slot="">
+        <% board.dvr.people.forEach(p => { %>
+          <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>"><%= p.ref_id || '' %> <%= p.name %></div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+
+  <% board.platoons.forEach(platoon => { %>
+    <h2><%= platoon.name %></h2>
+    <div class="outfield-platoon">
+      <% platoon.sections.forEach(section => { %>
+        <div class="outfield-section-card">
+          <h4><%= section.name %></h4>
+          <% board.coreSlots.forEach(slot => { %>
+            <div class="outfield-slot" data-section-id="<%= section.id %>" data-slot="<%= slot %>">
+              <span class="slot-label"><%= slot %></span>
+              <div class="outfield-dropzone outfield-dropzone-slot" data-section-id="<%= section.id %>" data-slot="<%= slot %>">
+                <% if (section.slots[slot]) { %>
+                  <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= section.slots[slot].id %>"><%= section.slots[slot].ref_id || '' %> <%= section.slots[slot].name %></div>
+                <% } %>
+              </div>
+            </div>
+          <% }) %>
+          <% board.spareSlots.forEach(slot => { %>
+            <div class="outfield-slot outfield-slot-spare" data-section-id="<%= section.id %>" data-slot="<%= slot %>">
+              <span class="slot-label"><%= slot %></span>
+              <div class="outfield-dropzone outfield-dropzone-slot" data-section-id="<%= section.id %>" data-slot="<%= slot %>">
+                <% if (section.slots[slot]) { %>
+                  <div class="outfield-card" <%= canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= section.slots[slot].id %>"><%= section.slots[slot].ref_id || '' %> <%= section.slots[slot].name %></div>
+                <% } %>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% }) %>
+    </div>
+  <% }) %>
+</div>
+
+<% if (canEdit) { %>
+<script src="/outfield.js"></script>
+<% } %>
+<%- include('partials/footer') %>

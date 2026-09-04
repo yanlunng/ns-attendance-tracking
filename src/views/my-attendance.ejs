@@ -1,0 +1,62 @@
+<%- include('partials/header') %>
+<h1>My Attendance</h1>
+
+<% if (!person) { %>
+  <p class="empty">Your account isn't linked to a roster record, so there's nothing to show here. Ask an admin to check your account.</p>
+<% } else { %>
+  <p class="hint">
+    <strong><%= person.name %></strong> (<%= person.ref_id || '' %>) — this is a read-only view of
+    your own attendance record. If you're marked MC, you can attach your certificate below.
+  </p>
+
+  <% if (rows.length === 0) { %>
+    <p class="empty">No attendance has been recorded for you yet.</p>
+  <% } else { %>
+  <table class="attendance-table">
+    <thead>
+      <tr><th>Date</th><th>Status</th><th>Detail</th><th>Marked by</th><th>Reason</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% rows.forEach(row => { %>
+      <tr>
+        <td data-label="Date"><%= row.date %></td>
+        <td data-label="Status">
+          <% if (row.status === 'off') { %>
+            <span class="badge badge-off">Off</span>
+          <% } else if (row.status === 'mc') { %>
+            <span class="badge badge-mc">MC</span>
+          <% } else if (row.status === 'outpro') { %>
+            <span class="badge badge-outpro">1st Day Outpro</span>
+          <% } else { %>
+            <span class="badge badge-present">Present</span>
+          <% } %>
+        </td>
+        <td data-label="Detail">
+          <% if (row.status === 'off') { %>
+            <%= row.off_period === 'TIME' ? `From ${row.off_time}` : row.off_period %> · <%= row.approval_status %>
+          <% } else if (row.status === 'outpro') { %>
+            <%= row.approval_status %>
+          <% } %>
+        </td>
+        <td data-label="Marked by"><%= row.submitter %></td>
+        <td data-label="Reason"><%= row.remarks || '' %></td>
+        <td data-label="Attachment">
+          <% if (row.status === 'mc') { %>
+            <% if (row.attachment_path) { %>
+              <a href="/attendance/attachment/<%= row.id %>">View attachment</a>
+            <% } else { %>
+              <form method="post" action="/attendance/submission/<%= row.id %>/attachment" enctype="multipart/form-data" class="attachment-form">
+                <input type="hidden" name="returnTo" value="/my-attendance" />
+                <input type="file" name="attachment" required />
+                <button type="submit">Attach MC</button>
+              </form>
+            <% } %>
+          <% } %>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+<% } %>
+<%- include('partials/footer') %>

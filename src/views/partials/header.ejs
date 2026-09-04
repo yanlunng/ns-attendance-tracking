@@ -9,20 +9,34 @@
 <body>
 <% if (currentUser) { %>
   <header class="topbar">
-    <div class="brand">Daily Attendance</div>
-    <nav>
-      <a href="/attendance">Mark Attendance</a>
-      <a href="/summary">Summary</a>
-      <% if (currentUser.role === 'admin') { %>
-        <a href="/roster">Roster</a>
-        <a href="/users">Users</a>
-      <% } %>
-    </nav>
-    <div class="who">
-      <span><%= currentUser.username %></span>
-      <form method="post" action="/logout" class="inline">
-        <button type="submit" class="link-btn">Log out</button>
-      </form>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle" />
+    <div class="topbar-main">
+      <div class="brand">Daily Attendance</div>
+      <label for="nav-toggle" class="nav-toggle-btn" aria-label="Menu">&#9776;</label>
+    </div>
+    <div class="topbar-menu">
+      <nav>
+        <% if (currentUser.role === 'self') { %>
+          <a href="/my-attendance">My Attendance</a>
+        <% } else { %>
+          <a href="/attendance">Mark Attendance</a>
+          <a href="/summary">Summary</a>
+          <a href="/establishment">Battery Establishment</a>
+          <a href="/outfield">Outfield Designation</a>
+          <% if (currentUser.role === 'admin') { %>
+            <a href="/approvals">Approvals</a>
+            <a href="/roster">Roster</a>
+            <a href="/users">Users</a>
+          <% } %>
+        <% } %>
+      </nav>
+      <div class="who">
+        <span><%= currentUser.username %></span>
+        <a href="/account">Change password</a>
+        <form method="post" action="/logout" class="inline">
+          <button type="submit" class="link-btn">Log out</button>
+        </form>
+      </div>
     </div>
   </header>
 <% } %>

@@ -1,0 +1,56 @@
+<%- include('partials/header') %>
+<div class="page-head">
+  <h1>Battery Establishment</h1>
+  <a href="/establishment/export" class="button-link">Export to Excel</a>
+</div>
+
+<p class="hint">
+  Grouping is auto-detected from each person's Sub Unit 1 on upload. Once
+  <% if (canEdit) { %>you<% } else { %>an admin or editor<% } %>
+  manually change someone's group here, future roster uploads won't overwrite it.
+</p>
+
+<div class="tab-bar">
+  <% tabs.forEach(tab => { %>
+    <a href="/establishment?group=<%= tab %>" class="tab <%= tab === activeTab ? 'tab-active' : '' %>">
+      <%= tab === 'ALL' ? 'All' : tab === 'UNASSIGNED' ? 'Unassigned' : tab %> (<%= counts[tab] %>)
+    </a>
+  <% }) %>
+</div>
+
+<% if (roster.length === 0) { %>
+  <p class="empty">Nobody in this group.</p>
+<% } else { %>
+<table class="attendance-table">
+  <thead>
+    <tr><th>Name</th><th>Rank/ID</th><th>Sub Unit 1</th><th>Group</th><% if (canEdit) { %><th></th><% } %></tr>
+  </thead>
+  <tbody>
+    <% roster.forEach(person => { %>
+    <tr>
+      <td data-label="Name"><%= person.name %></td>
+      <td data-label="Rank/ID"><%= person.ref_id || '' %></td>
+      <td data-label="Sub Unit 1"><%= person.subunit1_raw || '' %></td>
+      <td data-label="Group">
+        <span class="badge badge-<%= person.group_code ? 'leave' : 'warn' %>"><%= person.group_code || 'Unassigned' %></span>
+        <% if (person.group_source === 'manual') { %><span class="hint">(manual)</span><% } %>
+      </td>
+      <% if (canEdit) { %>
+      <td>
+        <form method="post" action="/establishment/<%= person.id %>/group">
+          <input type="hidden" name="returnTab" value="<%= activeTab %>" />
+          <select name="group" onchange="this.form.submit()">
+            <option value="">Unassigned</option>
+            <% groupCodes.forEach(code => { %>
+              <option value="<%= code %>" <%= person.group_code === code ? 'selected' : '' %>><%= code %></option>
+            <% }) %>
+          </select>
+        </form>
+      </td>
+      <% } %>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>
+<%- include('partials/footer') %>
