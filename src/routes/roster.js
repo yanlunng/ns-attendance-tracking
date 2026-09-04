@@ -1,5 +1,6 @@
 const express = require('express');
 const multer = require('multer');
+const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { requireAdmin } = require('../auth');
 const { parseRosterWorkbook } = require('../lib/rosterImport');
@@ -32,6 +33,19 @@ function cyclePageData() {
   };
 }
 
+function renderRosterError(res, message) {
+  return res.status(400).render('roster', {
+    roster: rosterList(),
+    error: message,
+    imported: null,
+    removed: null,
+    freshCredentials: null,
+    skippedAccounts: null,
+    kahAccounts: kahAccountsList(),
+    ...cyclePageData(),
+  });
+}
+
 router.get('/roster', requireAdmin, (req, res) => {
   const freshCredentials = req.session.freshCredentials || null;
   const skippedAccounts = req.session.skippedAccounts || null;
@@ -50,17 +64,7 @@ router.get('/roster', requireAdmin, (req, res) => {
 });
 
 router.post('/roster/upload', requireAdmin, upload.single('file'), async (req, res) => {
-  const fail = (message) =>
-    res.status(400).render('roster', {
-      roster: rosterList(),
-      error: message,
-      imported: null,
-      removed: null,
-      freshCredentials: null,
-      skippedAccounts: null,
-      kahAccounts: kahAccountsList(),
-      ...cyclePageData(),
-    });
+  const fail = (message) => renderRosterError(res, message);
 
   if (!req.file) return fail('No file uploaded.');
 
@@ -100,6 +104,21 @@ router.post('/roster/upload', requireAdmin, upload.single('file'), async (req, r
 
 router.post('/roster/settings/weekends', requireAdmin, (req, res) => {
   setSetting('count_weekends', req.body.count_weekends === '1' ? '1' : '0');
+  res.redirect('/roster');
+});
+
+router.post('/roster/kah-passwords/set-all', requireAdmin, (req, res) => {
+  const { password } = req.body;
+  if (!password || password.length < 8) {
+    return renderRosterError(res, 'Password must be at least 8 characters.');
+  }
+
+  const hash = bcrypt.hashSync(password, 10);
+  const placeholders = KAH_USERNAMES.map(() => '?').join(',');
+  db.prepare(
+    `UPDATE users SET password_hash = ?, needs_password = 0, must_change_password = 1 WHERE username IN (${placeholders})`
+  ).run(hash, ...KAH_USERNAMES);
+
   res.redirect('/roster');
 });
 

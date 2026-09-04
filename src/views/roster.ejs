@@ -88,6 +88,11 @@
     Set an initial password for BC, BSM, B2IC, PC, PS, P2IC, FPCom, RCom, or FU Com — whoever logs
     in with a password you set here is required to change it before doing anything else.
   </p>
+
+  <form method="post" action="/roster/kah-passwords/set-all" class="set-password-form">
+    <input type="password" name="password" placeholder="one-time password for all" minlength="8" required />
+    <button type="submit">Set for all 9 accounts</button>
+  </form>
   <table class="attendance-table">
     <thead><tr><th>Role</th><th>Level</th><th>Password</th><th></th></tr></thead>
     <tbody>
