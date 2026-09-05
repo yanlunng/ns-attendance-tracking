@@ -26,7 +26,8 @@
 <div class="home-alerts">
   <% if (pendingApprovals > 0) { %>
     <a class="home-alert" href="/approvals">
-      &#9888; <%= pendingApprovals %> pending approval<%= pendingApprovals > 1 ? 's' : '' %> waiting on you — review now
+      &#9888; (For BC only) There <%= pendingApprovals > 1 ? 'are' : 'is' %> <%= pendingApprovals %> pending
+      approval<%= pendingApprovals > 1 ? 's' : '' %> waiting for you to confirm.
     </a>
   <% } %>
   <% if (unconfirmedLines.length > 0) { %>
