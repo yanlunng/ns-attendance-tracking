@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireLogin } = require('../auth');
+const { formatOffPeriod } = require('../lib/offPeriod');
 
 const router = express.Router();
 
@@ -8,7 +9,7 @@ router.get('/my-attendance', requireLogin, (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.user.id);
 
   if (!user.roster_id) {
-    return res.render('my-attendance', { person: null, rows: [] });
+    return res.render('my-attendance', { person: null, rows: [], formatOffPeriod });
   }
 
   const person = db.prepare('SELECT * FROM roster WHERE id = ?').get(user.roster_id);
@@ -22,7 +23,7 @@ router.get('/my-attendance', requireLogin, (req, res) => {
     )
     .all(user.roster_id);
 
-  res.render('my-attendance', { person, rows });
+  res.render('my-attendance', { person, rows, formatOffPeriod });
 });
 
 module.exports = router;

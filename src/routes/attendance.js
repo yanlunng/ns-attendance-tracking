@@ -10,6 +10,7 @@ const { activeRosterForDate, getPhaseStagger, filterRosterForEditor } = require(
 const { submitOne } = require('../lib/attendanceSubmit');
 const { REPORT_LINES, canConfirmLine, canConfirmAll } = require('../lib/reportLines');
 const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines } = require('../lib/reportConfirmations');
+const { formatOffPeriod } = require('../lib/offPeriod');
 
 const router = express.Router();
 
@@ -150,7 +151,7 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
   const cycle = getCycleRange();
 
   if (!isWorkingDay(date)) {
-    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle, confirmation: null });
+    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle, confirmation: null, formatOffPeriod });
   }
 
   const { getDailySummary } = require('../lib/merge');
@@ -177,6 +178,7 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
     isAdmin: req.session.user.role === 'admin',
     phaseStagger: getPhaseStagger(date),
     confirmation,
+    formatOffPeriod,
   });
 });
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireAdmin } = require('../auth');
+const { formatOffPeriod } = require('../lib/offPeriod');
 
 const router = express.Router();
 
@@ -49,6 +50,7 @@ router.get('/approvals', requireAdmin, (req, res) => {
   res.render('approvals', {
     pendingOff: pendingGroups('off'),
     pendingOutpro: pendingGroups('outpro'),
+    formatOffPeriod,
   });
 });
 
