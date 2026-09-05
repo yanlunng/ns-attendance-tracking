@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const db = require('../db');
 const telegramApi = require('./telegramApi');
 const { submitOne, OFF_PERIODS } = require('./attendanceSubmit');
-const { activeRosterForDate, filterRosterForEditor } = require('./roster');
+const { activeRosterForDate, filterRosterForEditor, getExcludedFromStrength } = require('./roster');
 const { getCycleRange } = require('./settings');
 const { isWorkingDay } = require('./workingDays');
 const { buildWhatsappSummary } = require('./whatsappSummary');
@@ -164,6 +164,30 @@ async function summaryCmd(chatId, text) {
   const report = buildWhatsappSummary(date);
   await telegramApi.sendMessage(chatId, report, { parse_mode: undefined });
   return sendConfirmationPanel(chatId, user, date);
+}
+
+async function excludedCmd(chatId, text) {
+  const user = getLinkedUser(chatId);
+  if (!user) return telegramApi.sendMessage(chatId, "You're not linked yet. Send /link CODE from your account page first.");
+  if (user.role === 'self') return telegramApi.sendMessage(chatId, "This isn't available for your account — check My Attendance on the web app instead.");
+
+  const arg = text.replace('/excluded', '').trim();
+  const date = arg ? dateFromToken(arg) : todayStr();
+  if (!date) return telegramApi.sendMessage(chatId, 'Usage: /excluded or /excluded YYYY-MM-DD');
+
+  const excluded = getExcludedFromStrength(date);
+  if (excluded.length === 0) {
+    return telegramApi.sendMessage(chatId, `Nobody is excluded from total strength on ${date}.`, { parse_mode: undefined });
+  }
+
+  const lines = excluded.map(
+    (e) => `- ${e.person.name}${e.person.ref_id ? ` (${e.person.ref_id})` : ''} — ${e.reasons.join('; ')}`
+  );
+  return telegramApi.sendMessage(
+    chatId,
+    `Not in total strength on ${date} (${excluded.length}):\n${lines.join('\n')}`,
+    { parse_mode: undefined }
+  );
 }
 
 async function sendConfirmationPanel(chatId, user, date) {
@@ -333,6 +357,7 @@ async function handleMessage(message) {
   if (text.startsWith('/mark')) return markCmd(chatId);
   if (text.startsWith('/whoami')) return whoamiCmd(chatId);
   if (text.startsWith('/summary')) return summaryCmd(chatId, text);
+  if (text.startsWith('/excluded')) return excludedCmd(chatId, text);
 
   const user = getLinkedUser(chatId);
   if (!user) return telegramApi.sendMessage(chatId, "You're not linked yet. Send /link CODE from your account page first.");
@@ -446,6 +471,7 @@ function getLinkStatus(userId, username) {
 const BOT_COMMANDS = [
   { command: 'mark', description: 'Mark attendance for a date' },
   { command: 'summary', description: 'Copy-paste strength report for WhatsApp' },
+  { command: 'excluded', description: "Who's not in total strength today, and why" },
   { command: 'link', description: 'Link this chat to your account (needs a code)' },
   { command: 'unlink', description: 'Unlink this chat' },
   { command: 'whoami', description: 'Show which account this chat is linked to' },
