@@ -200,6 +200,10 @@ form.inline { display: inline; }
   -webkit-touch-callout: none;
 }
 .outfield-card-dragging { opacity: 0.3; }
+.outfield-card-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
 .outfield-card-off {
   opacity: 0.5;
   background: repeating-linear-gradient(45deg, var(--card), var(--card) 8px, #f3f4f6 8px, #f3f4f6 16px);
