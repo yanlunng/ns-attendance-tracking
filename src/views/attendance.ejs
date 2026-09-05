@@ -80,6 +80,7 @@
           <select name="off_period_<%= person.id %>" onchange="window.toggleOffTime(this)">
             <option value="AM" <%= existing.off_period === 'AM' ? 'selected' : '' %>>AM</option>
             <option value="PM" <%= existing.off_period === 'PM' ? 'selected' : '' %>>PM</option>
+            <option value="FULL" <%= existing.off_period === 'FULL' ? 'selected' : '' %>>Full day</option>
             <option value="TIME" <%= existing.off_period === 'TIME' ? 'selected' : '' %>>Custom time</option>
           </select>
           <input type="time" name="off_time_<%= person.id %>" value="<%= existing.off_time || '' %>" style="<%= existing.off_period === 'TIME' ? '' : 'display:none' %>" class="off-time-start" />

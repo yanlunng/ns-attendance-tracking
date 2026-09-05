@@ -85,6 +85,7 @@
         '<select name="off_period_' + id + '" onchange="window.toggleOffTime(this)">' +
           '<option value="AM">AM</option>' +
           '<option value="PM">PM</option>' +
+          '<option value="FULL">Full day</option>' +
           '<option value="TIME">Custom time</option>' +
         '</select>' +
         '<input type="time" name="off_time_' + id + '" style="display:none" class="off-time-start" />' +

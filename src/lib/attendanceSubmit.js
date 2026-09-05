@@ -2,7 +2,7 @@ const db = require('../db');
 const { isWorkingDay } = require('./workingDays');
 const { activeRosterForDate } = require('./roster');
 
-const OFF_PERIODS = ['AM', 'PM', 'TIME'];
+const OFF_PERIODS = ['AM', 'PM', 'TIME', 'FULL'];
 const STATUSES = ['present', 'off', 'mc', 'outpro'];
 
 const upsertStmt = db.prepare(`

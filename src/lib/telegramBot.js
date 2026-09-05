@@ -409,7 +409,7 @@ async function handleCallback(callbackQuery) {
       return telegramApi.sendMessage(
         chatId,
         'Which period?',
-        telegramApi.inlineKeyboard([OFF_PERIODS.map((p) => ({ text: p === 'TIME' ? 'Custom time' : p, data: `period:${p}` }))])
+        telegramApi.inlineKeyboard([OFF_PERIODS.map((p) => ({ text: p === 'TIME' ? 'Custom time' : p === 'FULL' ? 'Full day' : p, data: `period:${p}` }))])
       );
     }
     if (value === 'mc') {
