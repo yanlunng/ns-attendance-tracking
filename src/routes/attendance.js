@@ -27,6 +27,19 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
+// Mark Attendance submits everyone in one bulk form — file field names are
+// dynamic (attachment_<rosterId>, only present for rows marked MC), so this
+// uses .any() instead of a fixed field list.
+const uploadBulk = multer({
+  storage: multer.diskStorage({
+    destination: attachmentsDir,
+    filename: (req, file, cb) => {
+      cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
 function todayStr() {
   const d = new Date();
   const tzOffset = d.getTimezoneOffset() * 60000;
@@ -113,7 +126,7 @@ router.get('/attendance', requireLogin, blockSelfRole, (req, res) => {
   });
 });
 
-router.post('/attendance', requireLogin, blockSelfRole, (req, res) => {
+router.post('/attendance', requireLogin, blockSelfRole, uploadBulk.any(), (req, res) => {
   const date = req.body.date;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
     return res.status(400).render('error', { message: 'Invalid date.' });
@@ -124,12 +137,23 @@ router.post('/attendance', requireLogin, blockSelfRole, (req, res) => {
 
   const roster = filterRosterForEditor(activeRosterForDate(date), req.session.user.username);
 
+  const attachmentByRosterId = new Map();
+  for (const file of req.files || []) {
+    const match = file.fieldname.match(/^attachment_(\d+)$/);
+    if (match) attachmentByRosterId.set(Number(match[1]), file);
+  }
+
+  const findSubmissionId = db.prepare(
+    'SELECT id FROM attendance_submissions WHERE date = ? AND roster_id = ? AND user_id = ?'
+  );
+  const setAttachment = db.prepare('UPDATE attendance_submissions SET attachment_path = ? WHERE id = ?');
+
   const tx = db.transaction(() => {
     for (const person of roster) {
       const status = req.body[`status_${person.id}`];
       if (!status) continue; // person left unmarked this submission
 
-      submitOne({
+      const result = submitOne({
         date,
         rosterId: person.id,
         submitterId: req.session.user.id,
@@ -141,6 +165,11 @@ router.post('/attendance', requireLogin, blockSelfRole, (req, res) => {
         offTimeEnd: req.body[`off_time_end_${person.id}`],
         remarks: req.body[`remarks_${person.id}`],
       }); // per-person validation failures (e.g. missing off period) are silently skipped, same as before
+
+      if (result.ok && status === 'mc' && attachmentByRosterId.has(person.id)) {
+        const submission = findSubmissionId.get(date, person.id, req.session.user.id);
+        if (submission) setAttachment.run(attachmentByRosterId.get(person.id).path, submission.id);
+      }
     }
   });
   tx();

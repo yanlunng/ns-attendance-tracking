@@ -48,7 +48,7 @@
      const exceptionsInitial = rows.filter(r => r.existing && r.existing.status !== 'present');
      const presentRows = rows.filter(r => !r.existing || r.existing.status === 'present');
 %>
-<form method="post" action="/attendance" id="attendance-form">
+<form method="post" action="/attendance" id="attendance-form" enctype="multipart/form-data">
   <input type="hidden" name="date" value="<%= date %>" />
 
   <div class="add-exception">
@@ -60,7 +60,7 @@
 
   <table class="attendance-table" id="exceptions-table" style="<%= exceptionsInitial.length ? '' : 'display:none' %>">
     <thead>
-      <tr><th>Name</th><th>Rank</th><th>Status</th><th>Off period</th><th>Reason</th><th></th></tr>
+      <tr><th>Name</th><th>Rank</th><th>Status</th><th>Detail</th><th>Reason</th><th></th></tr>
     </thead>
     <tbody id="exceptions-body">
       <% exceptionsInitial.forEach(({ person, existing }) => { %>
@@ -76,15 +76,24 @@
             <% } %>
           </select>
         </td>
-        <td data-label="Off period" class="off-detail" style="<%= existing.status === 'off' ? '' : 'display:none' %>">
-          <select name="off_period_<%= person.id %>" onchange="window.toggleOffTime(this)">
-            <option value="AM" <%= existing.off_period === 'AM' ? 'selected' : '' %>>AM</option>
-            <option value="PM" <%= existing.off_period === 'PM' ? 'selected' : '' %>>PM</option>
-            <option value="FULL" <%= existing.off_period === 'FULL' ? 'selected' : '' %>>Full day</option>
-            <option value="TIME" <%= existing.off_period === 'TIME' ? 'selected' : '' %>>Custom time</option>
-          </select>
-          <input type="time" name="off_time_<%= person.id %>" value="<%= existing.off_time || '' %>" style="<%= existing.off_period === 'TIME' ? '' : 'display:none' %>" class="off-time-start" />
-          <input type="time" name="off_time_end_<%= person.id %>" value="<%= existing.off_time_end || '' %>" style="<%= existing.off_period === 'TIME' ? '' : 'display:none' %>" class="off-time-end" />
+        <td data-label="Detail" class="detail-cell" style="<%= ['off','mc'].includes(existing.status) ? '' : 'display:none' %>">
+          <div class="off-detail" style="<%= existing.status === 'off' ? '' : 'display:none' %>">
+            <select name="off_period_<%= person.id %>" onchange="window.toggleOffTime(this)">
+              <option value="AM" <%= existing.off_period === 'AM' ? 'selected' : '' %>>AM</option>
+              <option value="PM" <%= existing.off_period === 'PM' ? 'selected' : '' %>>PM</option>
+              <option value="FULL" <%= existing.off_period === 'FULL' ? 'selected' : '' %>>Full day</option>
+              <option value="TIME" <%= existing.off_period === 'TIME' ? 'selected' : '' %>>Custom time</option>
+            </select>
+            <input type="time" name="off_time_<%= person.id %>" value="<%= existing.off_time || '' %>" style="<%= existing.off_period === 'TIME' ? '' : 'display:none' %>" class="off-time-start" />
+            <input type="time" name="off_time_end_<%= person.id %>" value="<%= existing.off_time_end || '' %>" style="<%= existing.off_period === 'TIME' ? '' : 'display:none' %>" class="off-time-end" />
+          </div>
+          <div class="mc-detail" style="<%= existing.status === 'mc' ? '' : 'display:none' %>">
+            <% if (existing.attachment_path) { %>
+              <a href="/attendance/attachment/<%= existing.id %>">View attachment</a>
+            <% } else { %>
+              <input type="file" name="attachment_<%= person.id %>" />
+            <% } %>
+          </div>
         </td>
         <td data-label="Reason"><input type="text" name="remarks_<%= person.id %>" value="<%= existing.remarks || '' %>" placeholder="reason (optional)" /></td>
         <td><button type="button" class="link-btn remove-exception" data-id="<%= person.id %>">Remove</button></td>

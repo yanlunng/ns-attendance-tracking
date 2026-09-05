@@ -13,9 +13,14 @@
 
   window.toggleOffDetail = function (statusSelect) {
     var row = statusSelect.closest('tr');
-    var offDetail = row && row.querySelector('.off-detail');
-    if (!offDetail) return;
-    offDetail.style.display = statusSelect.value === 'off' ? '' : 'none';
+    var cell = row && row.querySelector('.detail-cell');
+    if (!cell) return;
+    var status = statusSelect.value;
+    cell.style.display = status === 'off' || status === 'mc' ? '' : 'none';
+    var offDetail = cell.querySelector('.off-detail');
+    var mcDetail = cell.querySelector('.mc-detail');
+    if (offDetail) offDetail.style.display = status === 'off' ? '' : 'none';
+    if (mcDetail) mcDetail.style.display = status === 'mc' ? '' : 'none';
   };
 
   window.toggleOffTime = function (periodSelect) {
@@ -81,15 +86,20 @@
           (window.CAN_MARK_OUTPRO ? '<option value="outpro">1st Day Outpro</option>' : '') +
         '</select>' +
       '</td>' +
-      '<td data-label="Off period" class="off-detail">' +
-        '<select name="off_period_' + id + '" onchange="window.toggleOffTime(this)">' +
-          '<option value="AM">AM</option>' +
-          '<option value="PM">PM</option>' +
-          '<option value="FULL">Full day</option>' +
-          '<option value="TIME">Custom time</option>' +
-        '</select>' +
-        '<input type="time" name="off_time_' + id + '" style="display:none" class="off-time-start" />' +
-        '<input type="time" name="off_time_end_' + id + '" style="display:none" class="off-time-end" />' +
+      '<td data-label="Detail" class="detail-cell">' +
+        '<div class="off-detail">' +
+          '<select name="off_period_' + id + '" onchange="window.toggleOffTime(this)">' +
+            '<option value="AM">AM</option>' +
+            '<option value="PM">PM</option>' +
+            '<option value="FULL">Full day</option>' +
+            '<option value="TIME">Custom time</option>' +
+          '</select>' +
+          '<input type="time" name="off_time_' + id + '" style="display:none" class="off-time-start" />' +
+          '<input type="time" name="off_time_end_' + id + '" style="display:none" class="off-time-end" />' +
+        '</div>' +
+        '<div class="mc-detail" style="display:none">' +
+          '<input type="file" name="attachment_' + id + '" />' +
+        '</div>' +
       '</td>' +
       '<td data-label="Reason"><input type="text" name="remarks_' + id + '" placeholder="reason (optional)" /></td>' +
       '<td><button type="button" class="link-btn remove-exception" data-id="' + id + '">Remove</button></td>';
