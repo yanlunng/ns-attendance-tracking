@@ -103,6 +103,24 @@ if [[ "$CURRENT_SCOPES" != *"cloud-platform"* ]]; then
   sleep 20
 fi
 
+echo "== Ensuring a static external IP (so it survives VM stop/start) =="
+# GCP bills external IPv4 addresses the same whether they're ephemeral or
+# static, so there's no cost difference — but a static one doesn't change
+# when the VM is stopped/started, which otherwise breaks DNS (DuckDNS) and
+# the Caddy TLS cert until it's manually re-pointed.
+STATIC_IP_NAME="${VM_NAME}-ip"
+if gcloud compute addresses describe "$STATIC_IP_NAME" --region="$REGION" >/dev/null 2>&1; then
+  echo "Static IP '${STATIC_IP_NAME}' already reserved."
+else
+  CURRENT_IP=$(gcloud compute instances describe "$VM_NAME" --zone="$ZONE" --format='get(networkInterfaces[0].accessConfigs[0].natIP)' 2>/dev/null || echo "")
+  if [[ -n "$CURRENT_IP" ]]; then
+    echo "Promoting current ephemeral IP ${CURRENT_IP} to a static reservation named '${STATIC_IP_NAME}'..."
+    gcloud compute addresses create "$STATIC_IP_NAME" \
+      --region="$REGION" \
+      --addresses="$CURRENT_IP"
+  fi
+fi
+
 echo "== Opening firewall for HTTP/HTTPS (restrict --source-ranges if not public) =="
 gcloud compute firewall-rules create "allow-${VM_NAME}" \
   --allow=tcp:80,tcp:443 \
