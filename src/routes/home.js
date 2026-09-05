@@ -3,7 +3,7 @@ const db = require('../db');
 const { requireLogin } = require('../auth');
 const { isWorkingDay } = require('../lib/workingDays');
 const { getDailySummary } = require('../lib/merge');
-const { REPORT_LINES, canConfirmLine, canConfirmAll } = require('../lib/reportLines');
+const { REPORT_LINES, canConfirmLine } = require('../lib/reportLines');
 const { getConfirmedLines } = require('../lib/reportConfirmations');
 
 const router = express.Router();
@@ -43,7 +43,6 @@ router.get('/', requireLogin, (req, res) => {
     summary,
     pendingApprovals,
     unconfirmedLines,
-    showConfirmAll: workingDay && unconfirmedLines.length > 0 && canConfirmAll(req.session.user.username),
   });
 });
 

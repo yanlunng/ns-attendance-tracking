@@ -31,8 +31,8 @@
   <% } %>
   <% if (unconfirmedLines.length > 0) { %>
     <a class="home-alert" href="/summary">
-      &#128203; <%= unconfirmedLines.length %> line<%= unconfirmedLines.length > 1 ? 's' : '' %> not yet confirmed for today
-      <%= showConfirmAll ? '— you can confirm all of them at once' : '' %>
+      &#128203; <%= unconfirmedLines.length %> group<%= unconfirmedLines.length > 1 ? 's have' : ' has' %> not confirmed
+      <%= unconfirmedLines.length > 1 ? 'their' : 'its' %> attendance for today
     </a>
   <% } %>
 </div>
