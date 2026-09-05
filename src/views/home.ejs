@@ -12,12 +12,12 @@
   </p>
 <% } else { %>
   <div class="stats">
-    <div class="stat"><span><%= summary.stats.reported %>/<%= summary.stats.total %></span>reported</div>
-    <div class="stat"><span><%= summary.stats.present %></span>present</div>
-    <div class="stat"><span><%= summary.stats.offApproved %></span>off (approved)</div>
-    <div class="stat <%= summary.stats.offPending > 0 ? 'stat-warn' : '' %>"><span><%= summary.stats.offPending %></span>off (pending)</div>
-    <div class="stat"><span><%= summary.stats.mc %></span>mc</div>
-    <div class="stat <%= summary.stats.conflicts > 0 ? 'stat-warn' : '' %>"><span><%= summary.stats.conflicts %></span>conflicts</div>
+    <a class="stat" href="/summary?category=reported#personnel-panel"><span><%= summary.stats.reported %>/<%= summary.stats.total %></span>reported</a>
+    <a class="stat" href="/summary?category=present#personnel-panel"><span><%= summary.stats.present %></span>present</a>
+    <a class="stat" href="/summary?category=offApproved#personnel-panel"><span><%= summary.stats.offApproved %></span>off (approved)</a>
+    <a class="stat <%= summary.stats.offPending > 0 ? 'stat-warn' : '' %>" href="/summary?category=offPending#personnel-panel"><span><%= summary.stats.offPending %></span>off (pending)</a>
+    <a class="stat" href="/summary?category=mc#personnel-panel"><span><%= summary.stats.mc %></span>mc</a>
+    <a class="stat <%= summary.stats.conflicts > 0 ? 'stat-warn' : '' %>" href="/summary?category=conflicts#personnel-panel"><span><%= summary.stats.conflicts %></span>conflicts</a>
   </div>
   <p class="hint"><a href="/summary">View today's full Summary &rarr;</a></p>
 <% } %>
