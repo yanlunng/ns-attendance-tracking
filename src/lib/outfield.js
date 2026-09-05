@@ -27,6 +27,19 @@ const PLATOON_STRUCTURE = {
     ],
     standby: true,
   },
+  // PSTAR's own home-team structure — one 5-role team per platoon (mirrors
+  // whichever FP platoon it cross-attaches to via FP.platoons[].sections
+  // above), plus spares. These are separate sections from FP's own "PSTAR"
+  // slots — placing someone here doesn't move them there and vice versa.
+  PSTAR: {
+    coreSlots: ['Team Commander', '2IC', 'Specialist 1', 'Specialist 2', 'Driver'],
+    spareSlots: ['Spare 1', 'Spare 2'],
+    platoons: [
+      { name: 'Platoon 1', sections: ['Team'] },
+      { name: 'Platoon 2', sections: ['Team'] },
+    ],
+    standby: true,
+  },
   // Roles TBD — for now just a free-flow pool per platoon (no fixed slots),
   // since PCP isn't a real roster group_code and needs its own way to add
   // specific people (not yet built).
