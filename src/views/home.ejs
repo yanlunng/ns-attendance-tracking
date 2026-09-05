@@ -1,0 +1,87 @@
+<%- include('partials/header') %>
+
+<div class="home-hero">
+  <h1>Welcome, <%= currentUser.username %></h1>
+  <p class="hint">Here's today at a glance, and what you can do from here.</p>
+</div>
+
+<% if (!workingDay) { %>
+  <p class="banner-warn">
+    Today (<%= date %>) is a weekend — no attendance is expected by default. Use the date picker on
+    <a href="/summary">Summary</a> to check any other date.
+  </p>
+<% } else { %>
+  <div class="stats">
+    <div class="stat"><span><%= summary.stats.reported %>/<%= summary.stats.total %></span>reported</div>
+    <div class="stat"><span><%= summary.stats.present %></span>present</div>
+    <div class="stat"><span><%= summary.stats.offApproved %></span>off (approved)</div>
+    <div class="stat <%= summary.stats.offPending > 0 ? 'stat-warn' : '' %>"><span><%= summary.stats.offPending %></span>off (pending)</div>
+    <div class="stat"><span><%= summary.stats.mc %></span>mc</div>
+    <div class="stat <%= summary.stats.conflicts > 0 ? 'stat-warn' : '' %>"><span><%= summary.stats.conflicts %></span>conflicts</div>
+  </div>
+  <p class="hint"><a href="/summary">View today's full Summary &rarr;</a></p>
+<% } %>
+
+<% if (pendingApprovals > 0 || unconfirmedLines.length > 0) { %>
+<div class="home-alerts">
+  <% if (pendingApprovals > 0) { %>
+    <a class="home-alert" href="/approvals">
+      &#9888; <%= pendingApprovals %> pending approval<%= pendingApprovals > 1 ? 's' : '' %> waiting on you — review now
+    </a>
+  <% } %>
+  <% if (unconfirmedLines.length > 0) { %>
+    <a class="home-alert" href="/summary">
+      &#128203; <%= unconfirmedLines.length %> line<%= unconfirmedLines.length > 1 ? 's' : '' %> not yet confirmed for today
+      <%= showConfirmAll ? '— you can confirm all of them at once' : '' %>
+    </a>
+  <% } %>
+</div>
+<% } %>
+
+<h2>What you can do</h2>
+<div class="action-grid">
+  <a class="action-card" href="/attendance">
+    <span class="action-icon">&#128221;</span>
+    <span class="action-title">Mark Attendance</span>
+    <span class="action-desc">Flag anyone Off, MC, or 1st Day Outpro for a date — everyone else defaults to Present.</span>
+  </a>
+  <a class="action-card" href="/summary">
+    <span class="action-icon">&#128202;</span>
+    <span class="action-title">Summary</span>
+    <span class="action-desc">See everyone's merged status for a date, resolve conflicts, and confirm the parade state.</span>
+  </a>
+  <a class="action-card" href="/establishment">
+    <span class="action-icon">&#128203;</span>
+    <span class="action-title">Battery Establishment</span>
+    <span class="action-desc">Browse the roster by group — RBS, FP, PSTAR, HQ, DVR.</span>
+  </a>
+  <a class="action-card" href="/outfield">
+    <span class="action-icon">&#127967;</span>
+    <span class="action-title">Outfield Designation</span>
+    <span class="action-desc">Assign platoons, sections, and KAH appointments ahead of an outfield exercise.</span>
+  </a>
+  <% if (currentUser.role === 'admin') { %>
+  <a class="action-card" href="/approvals">
+    <span class="action-icon">&#9989;</span>
+    <span class="action-title">Approvals</span>
+    <span class="action-desc">Review pending Off and 1st Day Outpro requests before they count.</span>
+  </a>
+  <a class="action-card" href="/roster">
+    <span class="action-icon">&#128101;</span>
+    <span class="action-title">Roster</span>
+    <span class="action-desc">Upload the roster, set the cycle dates, and configure outfield exercise dates.</span>
+  </a>
+  <a class="action-card" href="/users">
+    <span class="action-icon">&#128273;</span>
+    <span class="action-title">Users</span>
+    <span class="action-desc">Create and manage login accounts.</span>
+  </a>
+  <% } %>
+  <a class="action-card" href="/export?date=<%= date %>">
+    <span class="action-icon">&#11015;&#65039;</span>
+    <span class="action-title">Download today's Excel</span>
+    <span class="action-desc">Export today's summary as a spreadsheet.</span>
+  </a>
+</div>
+
+<%- include('partials/footer') %>

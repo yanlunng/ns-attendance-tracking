@@ -6,6 +6,7 @@ const session = require('express-session');
 const db = require('./db'); // ensures schema + bootstrap admin run before requests arrive
 
 const authRoutes = require('./routes/auth');
+const homeRoutes = require('./routes/home');
 const attendanceRoutes = require('./routes/attendance');
 const rosterRoutes = require('./routes/roster');
 const userRoutes = require('./routes/users');
@@ -52,12 +53,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/', (req, res) => {
-  if (!req.session.user) return res.redirect('/login');
-  res.redirect(req.session.user.role === 'self' ? '/my-attendance' : '/attendance');
-});
-
 app.use(authRoutes);
+app.use(homeRoutes);
 app.use(attendanceRoutes);
 app.use(rosterRoutes);
 app.use(userRoutes);

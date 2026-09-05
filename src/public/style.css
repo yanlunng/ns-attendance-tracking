@@ -34,6 +34,7 @@ body {
   padding: 14px 16px;
 }
 .topbar .brand { font-weight: 700; }
+.topbar .brand a { color: var(--text); text-decoration: none; }
 
 .topbar-menu {
   display: flex;
@@ -158,6 +159,50 @@ form.inline { display: inline; }
 .stat-warn span { color: var(--danger); }
 
 .upload-box { background: var(--card); border: 1px solid var(--border); padding: 16px; border-radius: 8px; margin: 16px 0; }
+
+/* Home dashboard ------------------------------------------------------ */
+
+.home-hero h1 { margin-bottom: 2px; }
+
+.home-alerts { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+.home-alert {
+  display: block;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.home-alert:hover { background: #ffedd5; }
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  margin: 16px 0 24px;
+}
+.action-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  text-decoration: none;
+  color: var(--text);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  border-color: var(--accent);
+}
+.action-icon { font-size: 26px; line-height: 1; }
+.action-title { font-weight: 700; font-size: 15px; }
+.action-desc { color: var(--muted); font-size: 13px; line-height: 1.4; }
 
 /* Outfield Designation board -------------------------------------------- */
 

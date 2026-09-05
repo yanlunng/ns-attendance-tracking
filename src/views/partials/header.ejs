@@ -11,7 +11,7 @@
   <header class="topbar">
     <input type="checkbox" id="nav-toggle" class="nav-toggle" />
     <div class="topbar-main">
-      <div class="brand">Daily Attendance</div>
+      <div class="brand"><a href="/">Daily Attendance</a></div>
       <label for="nav-toggle" class="nav-toggle-btn" aria-label="Menu">&#9776;</label>
     </div>
     <div class="topbar-menu">
@@ -19,6 +19,7 @@
         <% if (currentUser.role === 'self') { %>
           <a href="/my-attendance">My Attendance</a>
         <% } else { %>
+          <a href="/">Home</a>
           <a href="/attendance">Mark Attendance</a>
           <a href="/summary">Summary</a>
           <a href="/establishment">Battery Establishment</a>
