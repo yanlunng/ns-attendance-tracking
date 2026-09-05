@@ -33,6 +33,39 @@ function todayStr() {
   return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
 }
 
+// Keys must match summary.stats' field names — the client-side drill-down
+// (public/summary.js) filters this per-person index by whichever one was
+// clicked.
+const PERSONNEL_CATEGORIES = [
+  'reported',
+  'present',
+  'offApproved',
+  'offPending',
+  'mc',
+  'outproApproved',
+  'outproPending',
+  'conflicts',
+];
+
+function buildPersonnelIndex(summary) {
+  return summary.rows.map((row) => ({
+    id: row.person.id,
+    name: row.person.name,
+    rank: row.person.ref_id || '',
+    group: row.person.group_code || '',
+    categories: {
+      reported: !row.unreported,
+      present: row.status === 'present',
+      offApproved: row.status === 'off' && row.approvalState === 'approved',
+      offPending: row.status === 'off' && row.approvalState === 'pending',
+      mc: row.status === 'mc',
+      outproApproved: row.status === 'outpro' && row.approvalState === 'approved',
+      outproPending: row.status === 'outpro' && row.approvalState === 'pending',
+      conflicts: row.conflict,
+    },
+  }));
+}
+
 router.get('/attendance', requireLogin, blockSelfRole, (req, res) => {
   const date = req.query.date || todayStr();
   const cycle = getCycleRange();
@@ -151,7 +184,7 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
   const cycle = getCycleRange();
 
   if (!isWorkingDay(date)) {
-    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle, confirmation: null, formatOffPeriod, excluded: [] });
+    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle, confirmation: null, formatOffPeriod, excluded: [], personnelIndex: [], initialCategory: null });
   }
 
   const { getDailySummary } = require('../lib/merge');
@@ -180,6 +213,8 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
     confirmation,
     formatOffPeriod,
     excluded: getExcludedFromStrength(date),
+    personnelIndex: buildPersonnelIndex(summary),
+    initialCategory: PERSONNEL_CATEGORIES.includes(req.query.category) ? req.query.category : null,
   });
 });
 

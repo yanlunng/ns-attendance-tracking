@@ -154,9 +154,43 @@ form.inline { display: inline; }
 .set-password-form button { padding: 4px 10px; min-height: 32px; font-size: 12px; }
 
 .stats { display: flex; gap: 12px; margin: 12px 0; flex-wrap: wrap; }
-.stat { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 13px; color: var(--muted); text-align: center; flex: 1 1 100px; }
+.stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--muted);
+  text-align: center;
+  flex: 1 1 100px;
+  min-height: auto;
+}
+button.stat { cursor: pointer; }
+button.stat:hover { border-color: var(--accent); }
+.stat.stat-active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .stat span { display: block; font-size: 20px; font-weight: 700; color: var(--text); }
 .stat-warn span { color: var(--danger); }
+
+.personnel-panel { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin: 12px 0; }
+.personnel-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.personnel-panel-head h3 { margin: 0; }
+.personnel-panel-close { color: var(--muted); background: none; padding: 0; min-height: auto; text-decoration: underline; }
+
+.group-filter-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.group-filter-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  min-height: auto;
+  color: var(--text);
+}
+.group-filter-btn.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.personnel-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 16px; }
+.personnel-list li { padding: 4px 0; border-bottom: 1px solid var(--bg); font-size: 14px; }
 
 .upload-box { background: var(--card); border: 1px solid var(--border); padding: 16px; border-radius: 8px; margin: 16px 0; }
 

@@ -57,15 +57,32 @@
   <% } %>
 </div>
 
-<div class="stats">
-  <div class="stat"><span><%= summary.stats.reported %>/<%= summary.stats.total %></span>reported</div>
-  <div class="stat"><span><%= summary.stats.present %></span>present</div>
-  <div class="stat"><span><%= summary.stats.offApproved %></span>off (approved)</div>
-  <div class="stat <%= summary.stats.offPending > 0 ? 'stat-warn' : '' %>"><span><%= summary.stats.offPending %></span>off (pending)</div>
-  <div class="stat"><span><%= summary.stats.mc %></span>mc</div>
-  <div class="stat"><span><%= summary.stats.outproApproved %></span>outpro (approved)</div>
-  <div class="stat <%= summary.stats.outproPending > 0 ? 'stat-warn' : '' %>"><span><%= summary.stats.outproPending %></span>outpro (pending)</div>
-  <div class="stat <%= summary.stats.conflicts > 0 ? 'stat-warn' : '' %>"><span><%= summary.stats.conflicts %></span>conflicts</div>
+<div class="stats" id="stats">
+  <button type="button" class="stat" data-category="reported"><span><%= summary.stats.reported %>/<%= summary.stats.total %></span>reported</button>
+  <button type="button" class="stat" data-category="present"><span><%= summary.stats.present %></span>present</button>
+  <button type="button" class="stat" data-category="offApproved"><span><%= summary.stats.offApproved %></span>off (approved)</button>
+  <button type="button" class="stat <%= summary.stats.offPending > 0 ? 'stat-warn' : '' %>" data-category="offPending"><span><%= summary.stats.offPending %></span>off (pending)</button>
+  <button type="button" class="stat" data-category="mc"><span><%= summary.stats.mc %></span>mc</button>
+  <button type="button" class="stat" data-category="outproApproved"><span><%= summary.stats.outproApproved %></span>outpro (approved)</button>
+  <button type="button" class="stat <%= summary.stats.outproPending > 0 ? 'stat-warn' : '' %>" data-category="outproPending"><span><%= summary.stats.outproPending %></span>outpro (pending)</button>
+  <button type="button" class="stat <%= summary.stats.conflicts > 0 ? 'stat-warn' : '' %>" data-category="conflicts"><span><%= summary.stats.conflicts %></span>conflicts</button>
+</div>
+
+<div class="personnel-panel" id="personnel-panel" style="display:none">
+  <div class="personnel-panel-head">
+    <h3 id="personnel-panel-title"></h3>
+    <button type="button" class="link-btn" id="personnel-panel-close">Close</button>
+  </div>
+  <div class="group-filter-buttons" id="group-filter-buttons">
+    <button type="button" class="group-filter-btn is-active" data-group="ALL">All</button>
+    <button type="button" class="group-filter-btn" data-group="RBS">RBS</button>
+    <button type="button" class="group-filter-btn" data-group="FP">FP</button>
+    <button type="button" class="group-filter-btn" data-group="PSTAR">PSTAR</button>
+    <button type="button" class="group-filter-btn" data-group="HQ">HQ</button>
+    <button type="button" class="group-filter-btn" data-group="DVR">Driver (DVR)</button>
+  </div>
+  <ul class="personnel-list" id="personnel-list"></ul>
+  <p class="empty" id="personnel-empty" style="display:none">Nobody matches this filter.</p>
 </div>
 
 <p>
@@ -150,4 +167,10 @@
 </table>
 <% } %>
 <% } %>
+
+<script>
+  window.SUMMARY_PERSONNEL = <%- JSON.stringify(personnelIndex) %>;
+  window.SUMMARY_INITIAL_CATEGORY = <%- JSON.stringify(initialCategory) %>;
+</script>
+<script src="/summary.js"></script>
 <%- include('partials/footer') %>
