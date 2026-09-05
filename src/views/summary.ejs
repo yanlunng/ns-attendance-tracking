@@ -130,5 +130,24 @@
     <% }) %>
   </tbody>
 </table>
+
+<% if (excluded.length > 0) { %>
+<h2>Not in total strength (<%= excluded.length %>)</h2>
+<p class="hint">Roster members excluded from today's headcount and why.</p>
+<table class="attendance-table">
+  <thead>
+    <tr><th>Name</th><th>Rank</th><th>Reason(s)</th></tr>
+  </thead>
+  <tbody>
+    <% excluded.forEach(({ person, reasons }) => { %>
+    <tr>
+      <td data-label="Name"><%= person.name %></td>
+      <td data-label="Rank"><%= person.ref_id || '' %></td>
+      <td data-label="Reason(s)"><%= reasons.join('; ') %></td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>
 <% } %>
 <%- include('partials/footer') %>

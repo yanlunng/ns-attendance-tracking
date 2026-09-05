@@ -6,7 +6,7 @@ const db = require('../db');
 const { requireLogin, blockSelfRole } = require('../auth');
 const { isWorkingDay } = require('../lib/workingDays');
 const { getCycleRange } = require('../lib/settings');
-const { activeRosterForDate, getPhaseStagger, filterRosterForEditor } = require('../lib/roster');
+const { activeRosterForDate, getPhaseStagger, filterRosterForEditor, getExcludedFromStrength } = require('../lib/roster');
 const { submitOne } = require('../lib/attendanceSubmit');
 const { REPORT_LINES, canConfirmLine, canConfirmAll } = require('../lib/reportLines');
 const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines } = require('../lib/reportConfirmations');
@@ -151,7 +151,7 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
   const cycle = getCycleRange();
 
   if (!isWorkingDay(date)) {
-    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle, confirmation: null, formatOffPeriod });
+    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle, confirmation: null, formatOffPeriod, excluded: [] });
   }
 
   const { getDailySummary } = require('../lib/merge');
@@ -179,6 +179,7 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
     phaseStagger: getPhaseStagger(date),
     confirmation,
     formatOffPeriod,
+    excluded: getExcludedFromStrength(date),
   });
 });
 

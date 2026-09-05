@@ -64,4 +64,39 @@ function filterRosterForEditor(roster, username) {
   return roster.filter((p) => scope.includes(p.group_code));
 }
 
-module.exports = { activeRosterForDate, getPhaseStagger, filterRosterForEditor };
+/**
+ * Everyone on the roster (active=1) who's excluded from that date's total
+ * strength, with the reason(s) why — mirrors activeRosterForDate's filters
+ * so the two can never drift apart. Used by the Summary page to explain a
+ * headcount smaller than the full roster instead of leaving people guessing.
+ */
+function getExcludedFromStrength(date) {
+  const roster = db.prepare('SELECT * FROM roster WHERE active = 1 ORDER BY name COLLATE NOCASE').all();
+
+  const outproRosterIds = new Set(
+    db
+      .prepare(
+        `SELECT roster_id FROM attendance_submissions
+         WHERE status = 'outpro' AND approval_status = 'approved' AND date < ?`
+      )
+      .all(date)
+      .map((r) => r.roster_id)
+  );
+
+  const mainBodyStart = getSetting('mainbody_phase_start_date');
+
+  const excluded = [];
+  for (const person of roster) {
+    const reasons = [];
+    if (person.is_deferred) reasons.push('Deferred');
+    if (person.is_ict_cancelled) reasons.push('ICT Cancelled');
+    if (outproRosterIds.has(person.id)) reasons.push('Started 1st Day Outpro on an earlier date');
+    if (mainBodyStart && person.is_commander_phase === 0 && date < mainBodyStart) {
+      reasons.push(`Main Body Phase personnel — joins ${mainBodyStart}`);
+    }
+    if (reasons.length > 0) excluded.push({ person, reasons });
+  }
+  return excluded;
+}
+
+module.exports = { activeRosterForDate, getPhaseStagger, filterRosterForEditor, getExcludedFromStrength };
