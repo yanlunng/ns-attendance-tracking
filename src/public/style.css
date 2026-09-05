@@ -145,9 +145,11 @@ form.inline { display: inline; }
 
 .submitter-line { font-size: 12px; color: var(--muted); }
 
-.attachment-form { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; }
+.attachment-form { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
 .attachment-form input[type=file] { font-size: 12px; min-height: auto; padding: 2px; }
 .attachment-form button { padding: 4px 10px; min-height: auto; font-size: 12px; }
+.attachment-through { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.attachment-through input[type=date] { font-size: 12px; min-height: auto; padding: 2px 4px; }
 
 .set-password-form { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .set-password-form input[type=password] { font-size: 13px; min-height: 32px; padding: 4px 8px; width: 130px; }

@@ -161,13 +161,30 @@ router.post('/attendance/submission/:id/attachment', requireLogin, (req, res, ne
   if (!isOwner && req.session.user.role !== 'admin') {
     return res.status(403).render('error', { message: "You can only attach a file to your own submissions." });
   }
+  req.submission = submission;
   next();
 }, upload.single('attachment'), (req, res) => {
   if (!req.file) return res.status(400).render('error', { message: 'No file uploaded.' });
+  const submission = req.submission;
   db.prepare('UPDATE attendance_submissions SET attachment_path = ? WHERE id = ?').run(
     req.file.path,
     req.params.id
   );
+
+  // Optional: the same certificate can cover a run of consecutive MC days —
+  // fills in any of this same submitter's later MC entries for this person
+  // that don't already have their own attachment, without touching ones
+  // that do (e.g. a different certificate for a separate MC period).
+  const throughDate = req.body.throughDate;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(throughDate || '') && throughDate > submission.date) {
+    db.prepare(
+      `UPDATE attendance_submissions
+       SET attachment_path = ?
+       WHERE roster_id = ? AND user_id = ? AND status = 'mc' AND attachment_path IS NULL
+         AND date > ? AND date <= ?`
+    ).run(req.file.path, submission.roster_id, submission.user_id, submission.date, throughDate);
+  }
+
   res.redirect(req.body.returnTo || `/summary?date=${encodeURIComponent(req.body.returnDate || '')}`);
 });
 

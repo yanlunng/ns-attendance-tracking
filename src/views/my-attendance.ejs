@@ -48,6 +48,7 @@
               <form method="post" action="/attendance/submission/<%= row.id %>/attachment" enctype="multipart/form-data" class="attachment-form">
                 <input type="hidden" name="returnTo" value="/my-attendance" />
                 <input type="file" name="attachment" required />
+                <label class="attachment-through">Covers through <input type="date" name="throughDate" min="<%= row.date %>" /></label>
                 <button type="submit">Attach MC</button>
               </form>
             <% } %>
