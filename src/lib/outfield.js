@@ -172,7 +172,7 @@ function reconcileIneligiblePlacements() {
        AND (
          active = 0
          OR is_deferred = 1
-         OR (is_ict_cancelled = 1 AND (ict_cancelled_date IS NULL OR ? > ict_cancelled_date))
+         OR (is_ict_cancelled = 1 AND (ict_cancelled_date IS NULL OR ? >= ict_cancelled_date))
          OR id IN (SELECT roster_id FROM attendance_submissions WHERE status = 'outpro' AND approval_status = 'approved')
          OR id IN (SELECT roster_id FROM kah_designations)
        )`
@@ -180,13 +180,15 @@ function reconcileIneligiblePlacements() {
 }
 
 /**
- * Eligible for outfield planning: active, not Deferred, not ICT Cancelled as
- * of today (a cancellation effective in the future doesn't exclude them
- * yet), belongs to the given group, hasn't started an approved Outpro at any
- * point this cycle, and doesn't have a KAH designation (those people only
- * show on the KAH tab, not auto-sorted into their group's board too).
- * Confirmed-absent people are still included (they show on the board,
- * dimmed) — see getConfirmedAbsentIds.
+ * Eligible for outfield planning: active, not Deferred, not ICT Cancelled
+ * effective on or before today (a cancellation effective in the future
+ * doesn't exclude them yet — but unlike total-strength reporting, planning
+ * has no "day of" grace period to preserve, so today's own cancellation
+ * already excludes them), belongs to the given group, hasn't started an
+ * approved Outpro at any point this cycle, and doesn't have a KAH
+ * designation (those people only show on the KAH tab, not auto-sorted into
+ * their group's board too). Confirmed-absent people are still included
+ * (they show on the board, dimmed) — see getConfirmedAbsentIds.
  */
 function eligibleRosterForGroups(groupCodes) {
   const placeholders = groupCodes.map(() => '?').join(',');
@@ -194,7 +196,7 @@ function eligibleRosterForGroups(groupCodes) {
     .prepare(
       `SELECT * FROM roster
        WHERE active = 1 AND is_deferred = 0
-       AND NOT (is_ict_cancelled = 1 AND (ict_cancelled_date IS NULL OR ? > ict_cancelled_date))
+       AND NOT (is_ict_cancelled = 1 AND (ict_cancelled_date IS NULL OR ? >= ict_cancelled_date))
        AND group_code IN (${placeholders})
        AND id NOT IN (
          SELECT roster_id FROM attendance_submissions WHERE status = 'outpro' AND approval_status = 'approved'
