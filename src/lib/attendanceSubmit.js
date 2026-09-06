@@ -64,4 +64,19 @@ function submitOne({ date, rosterId, submitterId, submitterRole, submitterUserna
   return { ok: true, approvalStatus };
 }
 
-module.exports = { submitOne, STATUSES, OFF_PERIODS };
+/**
+ * Extends an already-attached MC certificate's coverage to additional
+ * consecutive days for the same person + submitter, without re-uploading —
+ * reuses whichever attachment_path is already on the anchor submission.
+ * Only fills in days that don't already have their own attachment.
+ */
+function propagateMcAttachment({ attachmentPath, rosterId, userId, fromDate, throughDate }) {
+  db.prepare(
+    `UPDATE attendance_submissions
+     SET attachment_path = ?
+     WHERE roster_id = ? AND user_id = ? AND status = 'mc' AND attachment_path IS NULL
+       AND date > ? AND date <= ?`
+  ).run(attachmentPath, rosterId, userId, fromDate, throughDate);
+}
+
+module.exports = { submitOne, propagateMcAttachment, STATUSES, OFF_PERIODS };

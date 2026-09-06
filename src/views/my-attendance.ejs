@@ -44,6 +44,11 @@
           <% if (row.status === 'mc') { %>
             <% if (row.attachment_path) { %>
               <a href="/attendance/attachment/<%= row.id %>">View attachment</a>
+              <form method="post" action="/attendance/submission/<%= row.id %>/extend-attachment" class="attachment-form">
+                <input type="hidden" name="returnTo" value="/my-attendance" />
+                <label class="attachment-through">Extend through <input type="date" name="throughDate" min="<%= row.date %>" required /></label>
+                <button type="submit">Extend</button>
+              </form>
             <% } else { %>
               <form method="post" action="/attendance/submission/<%= row.id %>/attachment" enctype="multipart/form-data" class="attachment-form">
                 <input type="hidden" name="returnTo" value="/my-attendance" />
