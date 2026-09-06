@@ -167,6 +167,26 @@ function reconcileKahPlacements() {
 }
 
 /**
+ * Anyone with an approved Outpro (at any point this cycle) shouldn't keep
+ * occupying a slot or sitting in a pool on any Outfield Designation board —
+ * they're leaving the unit's active planning entirely. Clearing it here
+ * (rather than just filtering them out of eligibleRosterForGroups) also
+ * frees a real Fire Unit/Team slot for someone else, and prevents a stale
+ * placement from resurfacing via getBoard's cross-attached-people lookup
+ * (which deliberately doesn't filter by eligibility, since PCP needs to
+ * hold people whose own group_code wouldn't otherwise match).
+ */
+function reconcileOutproPlacements() {
+  db.exec(`
+    UPDATE roster SET outfield_section_id = NULL, outfield_slot = NULL
+    WHERE outfield_section_id IS NOT NULL
+      AND id IN (
+        SELECT roster_id FROM attendance_submissions WHERE status = 'outpro' AND approval_status = 'approved'
+      )
+  `);
+}
+
+/**
  * Eligible for outfield planning: active, not Deferred, not ICT Cancelled as
  * of today (a cancellation effective in the future doesn't exclude them
  * yet), belongs to the given group, hasn't started an approved Outpro at any
@@ -219,6 +239,7 @@ function groupPool(sectionId, allPeople) {
 function getBoard(groupCode) {
   reconcileStaleStagingAssignments();
   reconcileKahPlacements();
+  reconcileOutproPlacements();
 
   const isHqOrDvr = HQ_DVR_GROUPS.includes(groupCode);
   const structure = PLATOON_STRUCTURE[groupCode];
