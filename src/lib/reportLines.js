@@ -20,8 +20,10 @@ const REPORT_LINES = [
 // The roster group_code(s) each line is drawn from — used to derive who's
 // allowed to confirm it directly from the existing KAH edit-scope mapping
 // (db.editScopeFor), rather than a separate hardcoded permission table.
+// KAH counts toward Bty HQ — both are battery/battalion-level appointments
+// rather than Fire Unit crew, and KAH has no board/slot structure of its own.
 const LINE_GROUPS = {
-  BTY_HQ: ['HQ'],
+  BTY_HQ: ['HQ', 'KAH'],
   PL1: ['RBS'],
   FP1: ['FP'],
   PL2: ['RBS'],
@@ -61,6 +63,7 @@ function classifyRbsFpBucket(person, sectionsById) {
  * the flat "PSTAR" line (a plain headcount, not placement-based), and
  * additionally toward "PSTAR Unassigned" if they haven't yet been placed
  * into one of PSTAR's own Team slots — the two aren't mutually exclusive.
+ * KAH counts toward "Bty HQ" — it has no board/slot structure of its own.
  */
 function buildReportLineRows(date) {
   const { rows } = getDailySummary(date);
@@ -78,7 +81,7 @@ function buildReportLineRows(date) {
   for (const { key } of REPORT_LINES) lineRows[key] = [];
   for (const r of rows) {
     const g = r.person.group_code;
-    if (g === 'HQ') lineRows.BTY_HQ.push(r);
+    if (g === 'HQ' || g === 'KAH') lineRows.BTY_HQ.push(r);
     else if (g === 'PSTAR') {
       lineRows.PSTAR.push(r);
       const section = sectionsById.get(r.person.outfield_section_id);
