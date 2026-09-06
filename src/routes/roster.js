@@ -9,10 +9,17 @@ const { provisionSelfAccounts } = require('../lib/selfAccounts');
 const { getSetting, setSetting, getCountWeekends } = require('../lib/settings');
 const { nextMonday } = require('../lib/workingDays');
 const { listOutfieldDates, upsertOutfieldDate, removeOutfieldDate } = require('../lib/outfieldDates');
+const { getMcThresholdList } = require('../lib/mcSummary');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const KAH_USERNAMES = db.KAH_ROLES.map((r) => r.username);
+
+function todayStr() {
+  const d = new Date();
+  const tzOffset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
+}
 
 function rosterList() {
   return db.prepare('SELECT * FROM roster WHERE active = 1 ORDER BY name COLLATE NOCASE').all();
@@ -44,6 +51,8 @@ function renderRosterError(res, message) {
     freshCredentials: null,
     skippedAccounts: null,
     kahAccounts: kahAccountsList(),
+    mcThresholdList: getMcThresholdList(),
+    today: todayStr(),
     ...cyclePageData(),
   });
 }
@@ -61,6 +70,8 @@ router.get('/roster', requireAdmin, (req, res) => {
     freshCredentials,
     skippedAccounts,
     kahAccounts: kahAccountsList(),
+    mcThresholdList: getMcThresholdList(),
+    today: todayStr(),
     ...cyclePageData(),
   });
 });
@@ -156,9 +167,15 @@ router.post('/roster/:id/deferred', requireAdmin, (req, res) => {
   res.redirect('/roster');
 });
 
+// Cancelling sets the effective date to today — days before it still count
+// toward strength as whatever was actually reported; days from today on are
+// excluded. Un-cancelling clears the date so a later re-cancellation starts
+// a fresh cutoff rather than reusing a stale one.
 router.post('/roster/:id/ict-cancelled', requireAdmin, (req, res) => {
-  db.prepare('UPDATE roster SET is_ict_cancelled = ? WHERE id = ?').run(
-    req.body.value === '1' ? 1 : 0,
+  const cancel = req.body.value === '1';
+  db.prepare('UPDATE roster SET is_ict_cancelled = ?, ict_cancelled_date = ? WHERE id = ?').run(
+    cancel ? 1 : 0,
+    cancel ? todayStr() : null,
     req.params.id
   );
   res.redirect('/roster');

@@ -50,14 +50,14 @@ function upsertRoster(people, mode) {
   const update = db.prepare(`
     UPDATE roster SET
       name = ?, ref_id = ?, unit = ?, date_of_birth = ?, mobile = ?, subunit1_raw = ?, position_descr = ?, extra = ?, active = 1,
-      is_deferred = ?, is_ict_cancelled = 0, is_commander_phase = ?,
+      is_deferred = ?, is_ict_cancelled = 0, ict_cancelled_date = NULL, is_commander_phase = ?,
       group_code = CASE WHEN group_source = 'manual' THEN group_code ELSE ? END,
       group_source = CASE WHEN group_source = 'manual' THEN group_source ELSE 'auto' END
     WHERE id = ?
   `);
   const insert = db.prepare(`
-    INSERT INTO roster (name, ref_id, unit, date_of_birth, mobile, subunit1_raw, position_descr, extra, is_deferred, is_ict_cancelled, is_commander_phase, group_code, group_source, active)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 'auto', 1)
+    INSERT INTO roster (name, ref_id, unit, date_of_birth, mobile, subunit1_raw, position_descr, extra, is_deferred, is_ict_cancelled, ict_cancelled_date, is_commander_phase, group_code, group_source, active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, 'auto', 1)
   `);
 
   const tx = db.transaction(() => {

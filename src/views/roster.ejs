@@ -171,10 +171,45 @@
   </form>
 </div>
 
-<h2>Current roster (<%= roster.length %> total, <%= roster.filter(p => !p.is_deferred && !p.is_ict_cancelled).length %> counted this cycle)</h2>
+<div class="upload-box">
+  <h2>MC watch (<%= mcThresholdList.length %>)</h2>
+  <p class="hint">
+    Anyone with 3 or more MC days recorded so far this cycle (not necessarily consecutive), for a
+    discretionary call on whether to cancel their ICT. Cancelling here sets the effective date to
+    today — MC days already recorded still count as reported, only future days are excluded from
+    strength.
+  </p>
+  <% if (mcThresholdList.length === 0) { %>
+    <p class="empty">Nobody has hit the threshold yet.</p>
+  <% } else { %>
+  <table class="attendance-table">
+    <thead><tr><th>Name</th><th>Rank</th><th>Group</th><th>MC days this cycle</th><th></th></tr></thead>
+    <tbody>
+      <% mcThresholdList.forEach(person => { %>
+      <tr>
+        <td data-label="Name"><%= person.name %></td>
+        <td data-label="Rank"><%= person.ref_id || '' %></td>
+        <td data-label="Group"><%= person.group_code || '—' %></td>
+        <td data-label="MC days this cycle"><%= person.mcDays %></td>
+        <td>
+          <form method="post" action="/roster/<%= person.id %>/ict-cancelled" onsubmit="return confirm('Cancel this person\'s ICT, effective today?')">
+            <input type="hidden" name="value" value="1" />
+            <button type="submit">Cancel ICT</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+</div>
+
+<h2>Current roster (<%= roster.length %> total, <%= roster.filter(p => !p.is_deferred && !(p.is_ict_cancelled && (!p.ict_cancelled_date || today > p.ict_cancelled_date))).length %> counted this cycle)</h2>
 <p class="hint">
-  Deferred/ICT Cancelled people are excluded from Mark Attendance and Summary's total strength for
-  this cycle. Both reset to auto-suggested/off on every roster upload — re-apply as needed each cycle.
+  Deferred people are excluded from Mark Attendance and Summary's total strength for this whole
+  cycle. ICT Cancelled people are only excluded from the day it's marked onward — days before that
+  still count as whatever was actually reported. Both reset to off on every roster upload — re-apply
+  as needed each cycle.
 </p>
 <table class="attendance-table">
   <thead><tr><th>Name</th><th>Rank</th><th>Group</th><th>Phase</th><th>Deferred</th><th>ICT Cancelled</th><th></th></tr></thead>
@@ -200,6 +235,9 @@
             <input type="checkbox" onchange="this.form.submit()" <%= person.is_ict_cancelled ? 'checked' : '' %> />
           </label>
         </form>
+        <% if (person.is_ict_cancelled && person.ict_cancelled_date) { %>
+          <span class="hint">from <%= person.ict_cancelled_date %></span>
+        <% } %>
       </td>
       <td>
         <form method="post" action="/roster/<%= person.id %>/remove" onsubmit="return confirm('Remove this person from the roster?')">

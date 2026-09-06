@@ -131,6 +131,7 @@ addColumnIfMissing('roster', 'group_source', "TEXT NOT NULL DEFAULT 'auto'");
 addColumnIfMissing('roster', 'subunit1_raw', 'TEXT');
 addColumnIfMissing('roster', 'is_deferred', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('roster', 'is_ict_cancelled', 'INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('roster', 'ict_cancelled_date', 'TEXT');
 addColumnIfMissing('roster', 'mobile', 'TEXT');
 addColumnIfMissing('roster', 'is_commander_phase', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('roster', 'position_descr', 'TEXT');

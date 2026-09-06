@@ -3,9 +3,13 @@ const { getSetting } = require('./settings');
 
 /**
  * The roster as it should appear for a given date: active people, minus
- * anyone Deferred or ICT Cancelled for this cycle, minus anyone who had an
- * approved "Outpro" (1st day out-processing) recorded on an earlier date —
- * their outpro day itself is still tracked, but every day after an approved
+ * anyone Deferred for this cycle, minus anyone ICT Cancelled effective on or
+ * before this date — the day it's marked still counts (they were still
+ * around), only days after that drop out; a cancellation from before this
+ * date field existed has no date on file and is treated as always-excluded,
+ * matching its old permanent behavior. Also minus anyone who had an approved
+ * "Outpro" (1st day out-processing) recorded on an earlier date — their
+ * outpro day itself is still tracked, but every day after an approved
  * outpro they drop out of the total strength entirely. A still-pending
  * outpro doesn't exclude anyone until an admin approves it.
  *
@@ -18,14 +22,15 @@ function activeRosterForDate(date) {
   const rows = db
     .prepare(
       `SELECT * FROM roster
-       WHERE active = 1 AND is_deferred = 0 AND is_ict_cancelled = 0
+       WHERE active = 1 AND is_deferred = 0
+       AND NOT (is_ict_cancelled = 1 AND (ict_cancelled_date IS NULL OR ? > ict_cancelled_date))
        AND id NOT IN (
          SELECT roster_id FROM attendance_submissions
          WHERE status = 'outpro' AND approval_status = 'approved' AND date < ?
        )
        ORDER BY name COLLATE NOCASE`
     )
-    .all(date);
+    .all(date, date);
 
   const mainBodyStart = getSetting('mainbody_phase_start_date');
   if (!mainBodyStart) return rows;
@@ -45,9 +50,11 @@ function getPhaseStagger(date) {
   const excludedCount = db
     .prepare(
       `SELECT COUNT(*) AS c FROM roster
-       WHERE active = 1 AND is_deferred = 0 AND is_ict_cancelled = 0 AND is_commander_phase = 0`
+       WHERE active = 1 AND is_deferred = 0
+       AND NOT (is_ict_cancelled = 1 AND (ict_cancelled_date IS NULL OR ? > ict_cancelled_date))
+       AND is_commander_phase = 0`
     )
-    .get().c;
+    .get(date).c;
   if (excludedCount === 0) return null;
 
   return { mainBodyStart, excludedCount };
@@ -89,7 +96,11 @@ function getExcludedFromStrength(date) {
   for (const person of roster) {
     const reasons = [];
     if (person.is_deferred) reasons.push('Deferred');
-    if (person.is_ict_cancelled) reasons.push('ICT Cancelled');
+    if (person.is_ict_cancelled && (!person.ict_cancelled_date || date > person.ict_cancelled_date)) {
+      reasons.push(
+        person.ict_cancelled_date ? `ICT Cancelled from ${person.ict_cancelled_date}` : 'ICT Cancelled'
+      );
+    }
     if (outproRosterIds.has(person.id)) reasons.push('Started 1st Day Outpro on an earlier date');
     if (mainBodyStart && person.is_commander_phase === 0 && date < mainBodyStart) {
       reasons.push(`Main Body Phase personnel — joins ${mainBodyStart}`);

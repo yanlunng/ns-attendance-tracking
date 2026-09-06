@@ -2,6 +2,12 @@ const db = require('../db');
 
 const HQ_DVR_GROUPS = ['HQ', 'DVR'];
 
+function todayStr() {
+  const d = new Date();
+  const tzOffset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
+}
+
 // RBS: Platoon 1 / Platoon 2, each with 3 Fire Units — numbered continuously
 // across both platoons (Platoon 1: FU 1-3, Platoon 2: FU 4-6).
 // FP: Platoon 1 / Platoon 2, each with its own FU 1-3 (numbering resets per
@@ -161,8 +167,9 @@ function reconcileKahPlacements() {
 }
 
 /**
- * Eligible for outfield planning: active, not Deferred, not ICT Cancelled,
- * belongs to the given group, hasn't started an approved Outpro at any
+ * Eligible for outfield planning: active, not Deferred, not ICT Cancelled as
+ * of today (a cancellation effective in the future doesn't exclude them
+ * yet), belongs to the given group, hasn't started an approved Outpro at any
  * point this cycle, and doesn't have a KAH designation (those people only
  * show on the KAH tab, not auto-sorted into their group's board too).
  * Confirmed-absent people are still included (they show on the board,
@@ -173,14 +180,16 @@ function eligibleRosterForGroups(groupCodes) {
   return db
     .prepare(
       `SELECT * FROM roster
-       WHERE active = 1 AND is_deferred = 0 AND is_ict_cancelled = 0 AND group_code IN (${placeholders})
+       WHERE active = 1 AND is_deferred = 0
+       AND NOT (is_ict_cancelled = 1 AND (ict_cancelled_date IS NULL OR ? > ict_cancelled_date))
+       AND group_code IN (${placeholders})
        AND id NOT IN (
          SELECT roster_id FROM attendance_submissions WHERE status = 'outpro' AND approval_status = 'approved'
        )
        AND id NOT IN (SELECT roster_id FROM kah_designations)
        ORDER BY name COLLATE NOCASE`
     )
-    .all(...groupCodes);
+    .all(todayStr(), ...groupCodes);
 }
 
 function autoAssignUnplaced(people, section) {
