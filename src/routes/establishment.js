@@ -1,11 +1,14 @@
 const express = require('express');
+const multer = require('multer');
 const db = require('../db');
 const { requireLogin, requireEditor, blockSelfRole } = require('../auth');
 const { GROUP_CODES } = require('../lib/rosterImport');
 const { buildEstablishmentWorkbook } = require('../lib/exportXlsx');
+const { importEstablishmentWorkbook } = require('../lib/establishmentImport');
 
 const router = express.Router();
 const TABS = [...GROUP_CODES, 'UNASSIGNED', 'ALL'];
+const uploadTemplate = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 function rosterList() {
   return db.prepare('SELECT * FROM roster WHERE active = 1 ORDER BY name COLLATE NOCASE').all();
@@ -35,6 +38,7 @@ router.get('/establishment', requireLogin, blockSelfRole, (req, res) => {
     roster: filtered,
     groupCodes: GROUP_CODES,
     canEdit: ['admin', 'editor'].includes(req.session.user.role),
+    importError: req.query.importError || null,
   });
 });
 
@@ -56,6 +60,18 @@ router.get('/establishment/export', requireLogin, blockSelfRole, async (req, res
   res.setHeader('Content-Disposition', 'attachment; filename="battery_establishment.xlsx"');
   await workbook.xlsx.write(res);
   res.end();
+});
+
+router.post('/establishment/import', requireEditor, uploadTemplate.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.redirect('/establishment?importError=' + encodeURIComponent('No file uploaded.'));
+  }
+  try {
+    const results = await importEstablishmentWorkbook(req.file.buffer);
+    res.render('establishment-import-result', { results });
+  } catch (err) {
+    res.redirect('/establishment?importError=' + encodeURIComponent(err.message));
+  }
 });
 
 module.exports = router;

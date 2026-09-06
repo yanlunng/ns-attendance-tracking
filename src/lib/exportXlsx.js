@@ -78,6 +78,7 @@ async function buildEstablishmentWorkbook(roster) {
     { header: 'Sub Unit 1', key: 'subunit1_raw', width: 28 },
     { header: 'Group', key: 'group_code', width: 10 },
     { header: 'Group Set By', key: 'group_source', width: 12 },
+    { header: 'Date of Birth', key: 'dob', width: 14 },
   ];
   sheet.getRow(1).font = { bold: true };
 
@@ -89,6 +90,7 @@ async function buildEstablishmentWorkbook(roster) {
       subunit1_raw: person.subunit1_raw || '',
       group_code: person.group_code || 'Unassigned',
       group_source: person.group_source === 'manual' ? 'Manual' : 'Auto',
+      dob: person.date_of_birth || '',
     });
   }
 

@@ -4,6 +4,25 @@
   <a href="/establishment/export" class="button-link">Export to Excel</a>
 </div>
 
+<% if (importError) { %><p class="error"><%= importError %></p><% } %>
+
+<% if (canEdit) { %>
+<details class="outfield-template-box">
+  <summary>Import a battery designation file</summary>
+  <p class="hint">
+    Re-applies group designations from a previously exported file, matched by name + date of
+    birth. Only fills in people whose group is still auto-detected (never overwrites someone
+    who already has a manual designation set), and skips anyone no longer on the active roster.
+    Useful when a new NR carries stale/wrong battery info for people who haven't actually changed
+    battery — fixing that here first is what lets the Outfield Designation import find them again.
+  </p>
+  <form method="post" action="/establishment/import" enctype="multipart/form-data" class="inline">
+    <input type="file" name="file" accept=".xlsx" required />
+    <button type="submit">Import</button>
+  </form>
+</details>
+<% } %>
+
 <p class="hint">
   Grouping is auto-detected from each person's Sub Unit 1 on upload. Once
   <% if (canEdit) { %>you<% } else { %>an admin or editor<% } %>

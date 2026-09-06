@@ -1,0 +1,46 @@
+<%- include('partials/header') %>
+<h1>Battery Establishment Import</h1>
+
+<p class="hint">
+  Only people whose group was still auto-detected got changed. <a href="/establishment">Back to
+  Battery Establishment</a>
+</p>
+
+<h2>Placed (<%= results.placed.length %>)</h2>
+<% if (results.placed.length === 0) { %>
+  <p class="empty">Nobody's group was changed.</p>
+<% } else { %>
+<table class="attendance-table">
+  <thead><tr><th>Rank</th><th>Name</th><th>Group applied</th></tr></thead>
+  <tbody>
+    <% results.placed.forEach(p => { %>
+    <tr>
+      <td data-label="Rank"><%= p.ref_id %></td>
+      <td data-label="Name"><%= p.name %></td>
+      <td data-label="Group applied"><%= p.importedGroup %></td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>
+
+<h2>Skipped (<%= results.skipped.length %>)</h2>
+<% if (results.skipped.length === 0) { %>
+  <p class="empty">Nothing was skipped.</p>
+<% } else { %>
+<table class="attendance-table">
+  <thead><tr><th>Rank</th><th>Name</th><th>Group in file</th><th>Reason</th></tr></thead>
+  <tbody>
+    <% results.skipped.forEach(s => { %>
+    <tr>
+      <td data-label="Rank"><%= s.ref_id %></td>
+      <td data-label="Name"><%= s.name %></td>
+      <td data-label="Group in file"><%= s.importedGroup %></td>
+      <td data-label="Reason"><%= s.reason %></td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>
+
+<%- include('partials/footer') %>
