@@ -152,38 +152,31 @@ function reconcileStaleStagingAssignments() {
 }
 
 /**
- * A KAH designation should always mean "not also sitting in a normal
- * RBS/FP/PCP slot" — addKahDesignation clears placement when the
- * designation is first created, but this catches anyone who already had a
- * designation before that logic existed (or ended up placed again some
- * other way while still designated).
+ * Anyone who has fallen out of outfield-planning eligibility altogether —
+ * removed from the roster, Deferred, ICT Cancelled effective on or before
+ * today, an approved Outpro (at any point this cycle), or KAH-designated —
+ * shouldn't keep occupying a slot or sitting in a pool on any board.
+ * Clearing it here (rather than only filtering them out of
+ * eligibleRosterForGroups) frees a real Fire Unit/Team slot for someone
+ * else, and prevents a stale placement from resurfacing via getBoard's
+ * cross-attached-people lookup, which deliberately skips eligibility
+ * filtering so PCP can hold people whose own group_code wouldn't otherwise
+ * match — without this, that same lookup would just as happily keep
+ * resurfacing someone who's no longer eligible at all.
  */
-function reconcileKahPlacements() {
-  db.exec(`
-    UPDATE roster SET outfield_section_id = NULL, outfield_slot = NULL
-    WHERE outfield_section_id IS NOT NULL
-      AND id IN (SELECT roster_id FROM kah_designations)
-  `);
-}
-
-/**
- * Anyone with an approved Outpro (at any point this cycle) shouldn't keep
- * occupying a slot or sitting in a pool on any Outfield Designation board —
- * they're leaving the unit's active planning entirely. Clearing it here
- * (rather than just filtering them out of eligibleRosterForGroups) also
- * frees a real Fire Unit/Team slot for someone else, and prevents a stale
- * placement from resurfacing via getBoard's cross-attached-people lookup
- * (which deliberately doesn't filter by eligibility, since PCP needs to
- * hold people whose own group_code wouldn't otherwise match).
- */
-function reconcileOutproPlacements() {
-  db.exec(`
-    UPDATE roster SET outfield_section_id = NULL, outfield_slot = NULL
-    WHERE outfield_section_id IS NOT NULL
-      AND id IN (
-        SELECT roster_id FROM attendance_submissions WHERE status = 'outpro' AND approval_status = 'approved'
-      )
-  `);
+function reconcileIneligiblePlacements() {
+  const today = todayStr();
+  db.prepare(
+    `UPDATE roster SET outfield_section_id = NULL, outfield_slot = NULL
+     WHERE outfield_section_id IS NOT NULL
+       AND (
+         active = 0
+         OR is_deferred = 1
+         OR (is_ict_cancelled = 1 AND (ict_cancelled_date IS NULL OR ? > ict_cancelled_date))
+         OR id IN (SELECT roster_id FROM attendance_submissions WHERE status = 'outpro' AND approval_status = 'approved')
+         OR id IN (SELECT roster_id FROM kah_designations)
+       )`
+  ).run(today);
 }
 
 /**
@@ -238,8 +231,7 @@ function groupPool(sectionId, allPeople) {
  */
 function getBoard(groupCode) {
   reconcileStaleStagingAssignments();
-  reconcileKahPlacements();
-  reconcileOutproPlacements();
+  reconcileIneligiblePlacements();
 
   const isHqOrDvr = HQ_DVR_GROUPS.includes(groupCode);
   const structure = PLATOON_STRUCTURE[groupCode];
