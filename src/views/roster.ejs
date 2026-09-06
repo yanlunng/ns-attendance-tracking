@@ -208,8 +208,9 @@
 <p class="hint">
   Deferred people are excluded from Mark Attendance and Summary's total strength for this whole
   cycle. ICT Cancelled people are only excluded from the day it's marked onward — days before that
-  still count as whatever was actually reported. Both reset to off on every roster upload — re-apply
-  as needed each cycle.
+  still count as whatever was actually reported. The effective date defaults to today when checked;
+  BC or BSM can edit it afterward (e.g. to backdate it). Both reset to off on every roster upload —
+  re-apply as needed each cycle.
 </p>
 <table class="attendance-table">
   <thead><tr><th>Name</th><th>Rank</th><th>Group</th><th>Phase</th><th>Deferred</th><th>ICT Cancelled</th><th></th></tr></thead>
@@ -236,7 +237,13 @@
           </label>
         </form>
         <% if (person.is_ict_cancelled && person.ict_cancelled_date) { %>
-          <span class="hint">from <%= person.ict_cancelled_date %></span>
+          <% if (['bc', 'bsm'].includes(currentUser.username)) { %>
+            <form method="post" action="/roster/<%= person.id %>/ict-cancelled-date" class="inline">
+              <input type="date" name="effectiveDate" value="<%= person.ict_cancelled_date %>" onchange="this.form.submit()" />
+            </form>
+          <% } else { %>
+            <span class="hint">from <%= person.ict_cancelled_date %></span>
+          <% } %>
         <% } %>
       </td>
       <td>

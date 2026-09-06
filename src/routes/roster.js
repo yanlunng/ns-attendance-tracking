@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
-const { requireAdmin } = require('../auth');
+const { requireAdmin, requireBcOrBsm } = require('../auth');
 const { parseRosterWorkbook } = require('../lib/rosterImport');
 const { upsertRoster } = require('../lib/rosterUpsert');
 const { provisionSelfAccounts } = require('../lib/selfAccounts');
@@ -178,6 +178,22 @@ router.post('/roster/:id/ict-cancelled', requireAdmin, (req, res) => {
     cancel ? todayStr() : null,
     req.params.id
   );
+  res.redirect('/roster');
+});
+
+// The effective date defaults to today for whoever cancels it (any admin),
+// but only BC/BSM get to override it afterward — e.g. backdating to when
+// the person actually stopped being able to continue ICT.
+router.post('/roster/:id/ict-cancelled-date', requireBcOrBsm, (req, res) => {
+  const effectiveDate = req.body.effectiveDate;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate || '')) {
+    return renderRosterError(res, 'Effective date is not valid.');
+  }
+  const person = db.prepare('SELECT is_ict_cancelled FROM roster WHERE id = ?').get(req.params.id);
+  if (!person || !person.is_ict_cancelled) {
+    return renderRosterError(res, 'That person is not currently ICT Cancelled.');
+  }
+  db.prepare('UPDATE roster SET ict_cancelled_date = ? WHERE id = ?').run(effectiveDate, req.params.id);
   res.redirect('/roster');
 });
 
