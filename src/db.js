@@ -101,6 +101,20 @@ raw.exec(`
     confirmed_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(date, line)
   );
+
+  CREATE TABLE IF NOT EXISTS vehicles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS vehicle_drivers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+    roster_id INTEGER NOT NULL REFERENCES roster(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(vehicle_id, roster_id)
+  );
 `);
 
 // Additive, idempotent migrations for columns introduced after the tables

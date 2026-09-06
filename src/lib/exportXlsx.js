@@ -65,7 +65,7 @@ async function buildSummaryWorkbook(summary) {
   return workbook;
 }
 
-module.exports = { buildSummaryWorkbook, buildEstablishmentWorkbook };
+module.exports = { buildSummaryWorkbook, buildEstablishmentWorkbook, buildVehicleWorkbook };
 
 async function buildEstablishmentWorkbook(roster) {
   const workbook = new ExcelJS.Workbook();
@@ -92,6 +92,26 @@ async function buildEstablishmentWorkbook(roster) {
       group_source: person.group_source === 'manual' ? 'Manual' : 'Auto',
       dob: person.date_of_birth || '',
     });
+  }
+
+  return workbook;
+}
+
+async function buildVehicleWorkbook(vehicleTags) {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Vehicle Tagging');
+
+  sheet.columns = [
+    { header: 'Vehicle', key: 'vehicle', width: 22 },
+    { header: 'Driver', key: 'driver', width: 28 },
+    { header: 'Rank/ID', key: 'ref_id', width: 12 },
+  ];
+  sheet.getRow(1).font = { bold: true };
+
+  for (const vehicle of vehicleTags) {
+    for (const driver of vehicle.drivers) {
+      sheet.addRow({ vehicle: vehicle.name, driver: driver.name, ref_id: driver.ref_id || '' });
+    }
   }
 
   return workbook;

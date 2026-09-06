@@ -4,7 +4,9 @@ const db = require('../db');
 const { requireLogin, requireEditor, blockSelfRole } = require('../auth');
 const { getBoard, assignPerson, eligibleRosterForGroups, OUTFIELD_GROUPS } = require('../lib/outfield');
 const { listKahDesignations, addKahDesignation, removeKahDesignation } = require('../lib/kahDesignations');
+const { listVehicleTags, addVehicleDriver, removeVehicleDriver, removeVehicle } = require('../lib/vehicles');
 const { buildOutfieldTemplateWorkbook, importOutfieldTemplateWorkbook } = require('../lib/outfieldTemplate');
+const { buildVehicleWorkbook } = require('../lib/exportXlsx');
 
 const router = express.Router();
 const uploadTemplate = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
@@ -26,6 +28,9 @@ router.get('/outfield', requireLogin, blockSelfRole, (req, res) => {
       importError,
       pcpSourceRoster: null,
       pcpError: null,
+      vehicleTags: null,
+      vehicleSourceRoster: null,
+      vehicleError: null,
     });
   }
 
@@ -41,6 +46,9 @@ router.get('/outfield', requireLogin, blockSelfRole, (req, res) => {
     importError,
     pcpSourceRoster: group === 'PCP' ? eligibleRosterForGroups(['RBS', 'FP', 'PSTAR']) : null,
     pcpError: group === 'PCP' ? req.query.error || null : null,
+    vehicleTags: group === 'Others' ? listVehicleTags() : null,
+    vehicleSourceRoster: group === 'Others' ? eligibleRosterForGroups(['RBS', 'FP', 'PSTAR', 'HQ', 'DVR']) : null,
+    vehicleError: group === 'Others' ? req.query.error || null : null,
   });
 });
 
@@ -86,6 +94,45 @@ router.post('/outfield/pcp/add', requireEditor, (req, res) => {
   } catch (err) {
     res.redirect('/outfield?group=PCP&error=' + encodeURIComponent(err.message));
   }
+});
+
+// Vehicle tagging is a plain admin/editor-managed list shown on the Others
+// tab, deliberately separate from the drag/click board mechanics — someone
+// already placed as an RBS/FP Driver keeps their slot; this just records
+// which vehicle(s) they're tagged to alongside it. Adding a name not yet in
+// `vehicles` creates it; removing a vehicle's last driver deletes it too.
+router.post('/outfield/vehicles/add', requireEditor, (req, res) => {
+  const rosterId = Number(req.body.rosterId);
+  const vehicleName = (req.body.vehicleName || '').trim();
+
+  if (!rosterId || !vehicleName) {
+    return res.redirect('/outfield?group=Others&error=' + encodeURIComponent('Pick a driver and enter a vehicle name.'));
+  }
+
+  try {
+    addVehicleDriver(vehicleName, rosterId);
+    res.redirect('/outfield?group=Others');
+  } catch (err) {
+    res.redirect('/outfield?group=Others&error=' + encodeURIComponent(err.message));
+  }
+});
+
+router.post('/outfield/vehicles/:vehicleId/remove-driver/:rosterId', requireEditor, (req, res) => {
+  removeVehicleDriver(Number(req.params.vehicleId), Number(req.params.rosterId));
+  res.redirect('/outfield?group=Others');
+});
+
+router.post('/outfield/vehicles/:vehicleId/remove', requireEditor, (req, res) => {
+  removeVehicle(Number(req.params.vehicleId));
+  res.redirect('/outfield?group=Others');
+});
+
+router.get('/outfield/vehicles/export', requireLogin, blockSelfRole, async (req, res) => {
+  const workbook = await buildVehicleWorkbook(listVehicleTags());
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="vehicle_tagging.xlsx"');
+  await workbook.xlsx.write(res);
+  res.end();
 });
 
 router.post('/outfield/assign', requireEditor, (req, res) => {

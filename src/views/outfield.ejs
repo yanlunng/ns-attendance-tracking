@@ -220,6 +220,67 @@
   </div>
 </div>
 
+<% if (group === 'Others') { %>
+<h2>Vehicle Tagging</h2>
+<p class="hint">
+  Which driver(s) are tagged to which vehicle — separate from Outfield Designation's boards, so
+  tagging someone here doesn't move them out of their Fire Unit/Driver slot elsewhere. Not
+  drag-and-drop on purpose — only add/remove through the form below.
+  <a href="/outfield/vehicles/export">Export to Excel</a>
+</p>
+<% if (vehicleError) { %><p class="error"><%= vehicleError %></p><% } %>
+
+<table class="attendance-table">
+  <thead><tr><th>Vehicle</th><th>Driver(s)</th><% if (canEdit) { %><th></th><% } %></tr></thead>
+  <tbody>
+    <% vehicleTags.forEach(v => { %>
+    <tr>
+      <td data-label="Vehicle"><%= v.name %></td>
+      <td data-label="Driver(s)">
+        <% v.drivers.forEach(d => { %>
+          <span class="badge badge-leave"><%= d.ref_id || '' %> <%= d.name %></span>
+          <% if (canEdit) { %>
+          <form method="post" action="/outfield/vehicles/<%= v.id %>/remove-driver/<%= d.id %>" class="inline">
+            <button type="submit" class="link-btn">Remove</button>
+          </form>
+          <% } %>
+        <% }) %>
+      </td>
+      <% if (canEdit) { %>
+      <td>
+        <form method="post" action="/outfield/vehicles/<%= v.id %>/remove" class="inline">
+          <button type="submit" class="link-btn">Remove vehicle</button>
+        </form>
+      </td>
+      <% } %>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% if (vehicleTags.length === 0) { %><p class="empty">No vehicles tagged yet.</p><% } %>
+
+<% if (canEdit) { %>
+<div class="add-exception">
+  <form method="post" action="/outfield/vehicles/add" id="vehicle-add-form">
+    <label>Driver (RBS/FP/PSTAR/HQ/DVR) <input type="text" id="vehicle-search-input" placeholder="Type a name…" autocomplete="off" /></label>
+    <input type="hidden" name="rosterId" id="vehicle-selected-roster-id" />
+    <div id="vehicle-search-results" class="search-results"></div>
+    <label>Vehicle
+      <input type="text" name="vehicleName" list="vehicle-name-options" placeholder="e.g. 5-Tonner 1" required />
+      <datalist id="vehicle-name-options">
+        <% vehicleTags.forEach(v => { %><option value="<%= v.name %>"></option><% }) %>
+      </datalist>
+    </label>
+    <button type="submit">Add</button>
+  </form>
+</div>
+<script>
+  window.VEHICLE_SOURCE_ROSTER = <%- JSON.stringify(vehicleSourceRoster.map(p => ({ id: p.id, name: p.name, ref_id: p.ref_id || '' }))) %>;
+</script>
+<script src="/outfield-vehicles.js"></script>
+<% } %>
+<% } %>
+
 <% if (canEdit) { %>
 <script src="/outfield.js"></script>
 <% } %>
