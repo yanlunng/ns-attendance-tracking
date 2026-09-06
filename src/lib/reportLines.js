@@ -1,7 +1,7 @@
 const db = require('../db');
 const { getDailySummary } = require('./merge');
 
-// The 10 lines of the parade-state report, in display order.
+// The lines of the parade-state report, in display order.
 const REPORT_LINES = [
   { key: 'BTY_HQ', label: 'Bty HQ' },
   { key: 'PL1', label: 'PL1' },
@@ -12,7 +12,9 @@ const REPORT_LINES = [
   { key: 'FP_PSTAR', label: 'FP PSTAR' },
   { key: 'TOS_TECH', label: 'TOs/Tech' },
   { key: 'STANDBY', label: 'Standby' },
-  { key: 'UNASSIGNED', label: 'Not yet assigned' },
+  { key: 'RBS_UNASSIGNED', label: 'RBS Unassigned' },
+  { key: 'FP_UNASSIGNED', label: 'FP Unassigned' },
+  { key: 'PSTAR_UNASSIGNED', label: 'PSTAR Unassigned' },
 ];
 
 // The roster group_code(s) each line is drawn from — used to derive who's
@@ -28,28 +30,37 @@ const LINE_GROUPS = {
   FP_PSTAR: ['FP'],
   TOS_TECH: ['DVR'],
   STANDBY: ['RBS', 'FP'],
-  UNASSIGNED: ['RBS', 'FP'],
+  RBS_UNASSIGNED: ['RBS'],
+  FP_UNASSIGNED: ['FP'],
+  PSTAR_UNASSIGNED: ['PSTAR'],
 };
 
 /**
  * Classifies an RBS/FP person's current Outfield Designation placement into
  * a parade-state bucket: PL1/PL2 (RBS platoons), FP1/FP2 (FP platoons,
  * excluding their PSTAR sub-team), FP_PSTAR (either platoon's PSTAR
- * sub-team), STANDBY, or UNASSIGNED (still in the group's general pool).
+ * sub-team), STANDBY, or RBS_UNASSIGNED/FP_UNASSIGNED (still in the group's
+ * own general pool) — mutually exclusive, together covering every RBS/FP
+ * person exactly once.
  */
 function classifyRbsFpBucket(person, sectionsById) {
+  const unassignedKey = person.group_code === 'RBS' ? 'RBS_UNASSIGNED' : 'FP_UNASSIGNED';
   const section = sectionsById.get(person.outfield_section_id);
-  if (!section) return 'UNASSIGNED';
-  if (section.is_staging) return section.name === 'Standby' ? 'STANDBY' : 'UNASSIGNED';
+  if (!section) return unassignedKey;
+  if (section.is_staging) return section.name === 'Standby' ? 'STANDBY' : unassignedKey;
   if (section.name === 'PSTAR') return 'FP_PSTAR';
   if (person.group_code === 'RBS') return section.platoon === 'Platoon 1' ? 'PL1' : 'PL2';
   return section.platoon === 'Platoon 1' ? 'FP1' : 'FP2';
 }
 
 /**
- * Groups every roster row from getDailySummary(date) into the 10 report-line
+ * Groups every roster row from getDailySummary(date) into the report-line
  * buckets. Shared by the WhatsApp report text and the line-confirmation
  * feature so both always agree on exactly who belongs to which line.
+ * PSTAR is different from RBS/FP: every PSTAR person always counts toward
+ * the flat "PSTAR" line (a plain headcount, not placement-based), and
+ * additionally toward "PSTAR Unassigned" if they haven't yet been placed
+ * into one of PSTAR's own Team slots — the two aren't mutually exclusive.
  */
 function buildReportLineRows(date) {
   const { rows } = getDailySummary(date);
@@ -68,8 +79,12 @@ function buildReportLineRows(date) {
   for (const r of rows) {
     const g = r.person.group_code;
     if (g === 'HQ') lineRows.BTY_HQ.push(r);
-    else if (g === 'PSTAR') lineRows.PSTAR.push(r);
-    else if (g === 'DVR') lineRows.TOS_TECH.push(r);
+    else if (g === 'PSTAR') {
+      lineRows.PSTAR.push(r);
+      const section = sectionsById.get(r.person.outfield_section_id);
+      const placedInTeamSlot = !!section && section.group_code === 'PSTAR' && section.is_staging === 0;
+      if (!placedInTeamSlot) lineRows.PSTAR_UNASSIGNED.push(r);
+    } else if (g === 'DVR') lineRows.TOS_TECH.push(r);
     else if (g === 'RBS' || g === 'FP') {
       const b = bucket.get(r.person.id);
       if (lineRows[b]) lineRows[b].push(r);
