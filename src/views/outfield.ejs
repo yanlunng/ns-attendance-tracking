@@ -7,6 +7,25 @@
   <% }) %>
 </div>
 
+<% if (importError) { %><p class="error"><%= importError %></p><% } %>
+
+<details class="outfield-template-box">
+  <summary>Export / import a template (RBS, FP, PSTAR slot assignments)</summary>
+  <p class="hint">
+    Export saves everyone's current slot as an Excel file. Importing it later (e.g. for a new
+    cycle) fills in matching people by name + date of birth wherever they're still eligible and
+    the slot is empty — it never overwrites an occupied slot or moves someone already placed
+    elsewhere, and anyone who's left/changed group is simply skipped.
+  </p>
+  <a href="/outfield/export" class="button-link">Export current designation</a>
+  <% if (canEdit) { %>
+  <form method="post" action="/outfield/import" enctype="multipart/form-data" class="inline">
+    <input type="file" name="file" accept=".xlsx" required />
+    <button type="submit">Import template</button>
+  </form>
+  <% } %>
+</details>
+
 <% if (group === 'KAH') { %>
   <p class="hint">
     Named leadership appointments (e.g. Battery Commander) that don't fit a Fire Unit role — this

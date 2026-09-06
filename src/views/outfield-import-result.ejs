@@ -1,0 +1,51 @@
+<%- include('partials/header') %>
+<h1>Outfield Designation Import</h1>
+
+<p class="hint">
+  Only empty slots for currently-eligible people get filled in — nothing already on the board was
+  changed. <a href="/outfield">Back to Outfield Designation</a>
+</p>
+
+<h2>Placed (<%= results.placed.length %>)</h2>
+<% if (results.placed.length === 0) { %>
+  <p class="empty">Nobody was placed.</p>
+<% } else { %>
+<table class="attendance-table">
+  <thead><tr><th>Group</th><th>Platoon</th><th>Section</th><th>Slot</th><th>Rank</th><th>Name</th></tr></thead>
+  <tbody>
+    <% results.placed.forEach(p => { %>
+    <tr>
+      <td data-label="Group"><%= p.groupCode %></td>
+      <td data-label="Platoon"><%= p.platoon %></td>
+      <td data-label="Section"><%= p.section %></td>
+      <td data-label="Slot"><%= p.slot %></td>
+      <td data-label="Rank"><%= p.ref_id %></td>
+      <td data-label="Name"><%= p.name %></td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>
+
+<h2>Skipped (<%= results.skipped.length %>)</h2>
+<% if (results.skipped.length === 0) { %>
+  <p class="empty">Nothing was skipped.</p>
+<% } else { %>
+<table class="attendance-table">
+  <thead><tr><th>Group</th><th>Platoon</th><th>Section</th><th>Slot</th><th>Name</th><th>Reason</th></tr></thead>
+  <tbody>
+    <% results.skipped.forEach(s => { %>
+    <tr>
+      <td data-label="Group"><%= s.groupCode %></td>
+      <td data-label="Platoon"><%= s.platoon %></td>
+      <td data-label="Section"><%= s.section %></td>
+      <td data-label="Slot"><%= s.slot %></td>
+      <td data-label="Name"><%= s.name %></td>
+      <td data-label="Reason"><%= s.reason %></td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>
+
+<%- include('partials/footer') %>
