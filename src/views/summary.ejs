@@ -27,14 +27,15 @@
   </h2>
   <p class="hint">
     Confirming a line marks anyone in it with nothing reported yet as Present (approved). Each line
-    can only be confirmed by the KAH whose scope covers it; BC/BSM/B2IC can confirm any line.
+    can only be confirmed by the KAH whose scope covers it; BC/BSM/B2IC can confirm any line. Click a
+    line's name to see who's in it.
   </p>
   <table class="attendance-table">
     <thead><tr><th>Line</th><th>Status</th><th></th></tr></thead>
     <tbody>
       <% confirmation.lines.forEach(l => { %>
       <tr>
-        <td data-label="Line"><%= l.label %></td>
+        <td data-label="Line"><button type="button" class="line-link" data-category="<%= l.key %>"><%= l.label %></button></td>
         <td data-label="Status"><%= l.confirmed ? '✅ Confirmed' : '⬜ Not confirmed' %></td>
         <td>
           <% if (!l.confirmed && l.canConfirm) { %>
@@ -126,6 +127,11 @@
             </form>
           <% } else { %>
             <a href="/attendance/attachment/<%= row.mcSubmissionId %>">View attachment</a>
+            <form method="post" action="/attendance/submission/<%= row.mcSubmissionId %>/extend-attachment" class="attachment-form">
+              <input type="hidden" name="returnDate" value="<%= date %>" />
+              <label class="attachment-through">Extend through <input type="date" name="throughDate" min="<%= date %>" required /></label>
+              <button type="submit">Extend</button>
+            </form>
           <% } %>
         <% } else if (row.status === 'outpro') { %>
           <span class="badge badge-outpro">1st Day Outpro</span>

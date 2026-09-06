@@ -24,6 +24,7 @@
   };
 
   var activeCategory = null;
+  var activeCategoryLabel = '';
   var activeGroup = 'ALL';
 
   function escapeHtml(s) {
@@ -32,9 +33,19 @@
     });
   }
 
+  // .stat buttons mix a number span and a label as sibling text nodes, so
+  // their clean label has to come from CATEGORY_LABELS. The parade-state
+  // line buttons (.line-link) have no such markup — their own text is the
+  // label already, so no need to duplicate REPORT_LINES' labels here too.
+  function labelFor(category, btn) {
+    return CATEGORY_LABELS[category] || (btn && btn.textContent.trim()) || category;
+  }
+
   function render() {
-    statsBox.querySelectorAll('[data-category]').forEach(function (b) {
-      b.classList.toggle('stat-active', b.getAttribute('data-category') === activeCategory);
+    document.querySelectorAll('[data-category]').forEach(function (b) {
+      var isActive = b.getAttribute('data-category') === activeCategory;
+      b.classList.toggle('stat-active', isActive);
+      b.classList.toggle('is-active', isActive);
     });
 
     if (!activeCategory) {
@@ -49,7 +60,7 @@
       return true;
     });
 
-    titleEl.textContent = CATEGORY_LABELS[activeCategory] + ' (' + matches.length + ')';
+    titleEl.textContent = activeCategoryLabel + ' (' + matches.length + ')';
 
     listEl.innerHTML = matches
       .map(function (p) {
@@ -61,11 +72,17 @@
     listEl.style.display = matches.length === 0 ? 'none' : '';
   }
 
-  statsBox.addEventListener('click', function (e) {
+  document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-category]');
     if (!btn) return;
     var category = btn.getAttribute('data-category');
-    activeCategory = activeCategory === category ? null : category;
+    if (activeCategory === category) {
+      activeCategory = null;
+      activeCategoryLabel = '';
+    } else {
+      activeCategory = category;
+      activeCategoryLabel = labelFor(category, btn);
+    }
     render();
     if (activeCategory) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
@@ -82,11 +99,13 @@
 
   closeBtn.addEventListener('click', function () {
     activeCategory = null;
+    activeCategoryLabel = '';
     render();
   });
 
   if (initialCategory) {
     activeCategory = initialCategory;
+    activeCategoryLabel = labelFor(initialCategory, document.querySelector('[data-category="' + initialCategory + '"]'));
     render();
     panel.scrollIntoView({ block: 'start' });
   }

@@ -193,6 +193,19 @@ button.stat:hover, a.stat:hover { border-color: var(--accent); }
 }
 .group-filter-btn.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+.line-link {
+  background: none;
+  border: none;
+  padding: 0;
+  min-height: auto;
+  font-size: inherit;
+  font-family: inherit;
+  color: var(--text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.line-link.is-active { color: var(--accent); font-weight: 700; }
+
 .personnel-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 16px; }
 .personnel-list li { padding: 4px 0; border-bottom: 1px solid var(--bg); font-size: 14px; }
 

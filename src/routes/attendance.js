@@ -7,8 +7,8 @@ const { requireLogin, blockSelfRole } = require('../auth');
 const { isWorkingDay } = require('../lib/workingDays');
 const { getCycleRange } = require('../lib/settings');
 const { activeRosterForDate, getPhaseStagger, filterRosterForEditor, getExcludedFromStrength } = require('../lib/roster');
-const { submitOne } = require('../lib/attendanceSubmit');
-const { REPORT_LINES, canConfirmLine, canConfirmAll } = require('../lib/reportLines');
+const { submitOne, propagateMcAttachment } = require('../lib/attendanceSubmit');
+const { REPORT_LINES, canConfirmLine, canConfirmAll, buildReportLineRows } = require('../lib/reportLines');
 const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines } = require('../lib/reportConfirmations');
 const { formatOffPeriod } = require('../lib/offPeriod');
 
@@ -48,7 +48,8 @@ function todayStr() {
 
 // Keys must match summary.stats' field names — the client-side drill-down
 // (public/summary.js) filters this per-person index by whichever one was
-// clicked.
+// clicked. Also includes every REPORT_LINES key, so clicking a parade-state
+// line (e.g. "PL1", "RBS Unassigned") drills down the same way.
 const PERSONNEL_CATEGORIES = [
   'reported',
   'present',
@@ -58,15 +59,21 @@ const PERSONNEL_CATEGORIES = [
   'outproApproved',
   'outproPending',
   'conflicts',
+  ...REPORT_LINES.map((l) => l.key),
 ];
 
-function buildPersonnelIndex(summary) {
-  return summary.rows.map((row) => ({
-    id: row.person.id,
-    name: row.person.name,
-    rank: row.person.ref_id || '',
-    group: row.person.group_code || '',
-    categories: {
+function buildPersonnelIndex(summary, lineRows) {
+  const lineKeysByPersonId = new Map();
+  for (const { key } of REPORT_LINES) {
+    for (const row of lineRows[key] || []) {
+      if (!lineKeysByPersonId.has(row.person.id)) lineKeysByPersonId.set(row.person.id, new Set());
+      lineKeysByPersonId.get(row.person.id).add(key);
+    }
+  }
+
+  return summary.rows.map((row) => {
+    const lineKeys = lineKeysByPersonId.get(row.person.id) || new Set();
+    const categories = {
       reported: !row.unreported,
       present: row.status === 'present',
       offApproved: row.status === 'off' && row.approvalState === 'approved',
@@ -75,8 +82,17 @@ function buildPersonnelIndex(summary) {
       outproApproved: row.status === 'outpro' && row.approvalState === 'approved',
       outproPending: row.status === 'outpro' && row.approvalState === 'pending',
       conflicts: row.conflict,
-    },
-  }));
+    };
+    for (const { key } of REPORT_LINES) categories[key] = lineKeys.has(key);
+
+    return {
+      id: row.person.id,
+      name: row.person.name,
+      rank: row.person.ref_id || '',
+      group: row.person.group_code || '',
+      categories,
+    };
+  });
 }
 
 router.get('/attendance', requireLogin, blockSelfRole, (req, res) => {
@@ -177,22 +193,24 @@ router.post('/attendance', requireLogin, blockSelfRole, uploadBulk.any(), (req, 
   res.redirect(`/attendance?date=${encodeURIComponent(date)}&saved=1`);
 });
 
-router.post('/attendance/submission/:id/attachment', requireLogin, (req, res, next) => {
+function loadOwnedMcSubmission(req, res, next) {
   const submission = db.prepare('SELECT * FROM attendance_submissions WHERE id = ?').get(req.params.id);
   if (!submission) return res.status(404).render('error', { message: 'Submission not found.' });
   if (submission.status !== 'mc') {
-    return res.status(400).render('error', { message: 'Attachments are only accepted for MC entries.' });
+    return res.status(400).render('error', { message: 'Only MC entries can have an attachment.' });
   }
   const me = db.prepare('SELECT roster_id FROM users WHERE id = ?').get(req.session.user.id);
   const isOwner =
     submission.user_id === req.session.user.id ||
     (me.roster_id != null && me.roster_id === submission.roster_id);
   if (!isOwner && req.session.user.role !== 'admin') {
-    return res.status(403).render('error', { message: "You can only attach a file to your own submissions." });
+    return res.status(403).render('error', { message: "You can only manage your own submissions' attachments." });
   }
   req.submission = submission;
   next();
-}, upload.single('attachment'), (req, res) => {
+}
+
+router.post('/attendance/submission/:id/attachment', requireLogin, loadOwnedMcSubmission, upload.single('attachment'), (req, res) => {
   if (!req.file) return res.status(400).render('error', { message: 'No file uploaded.' });
   const submission = req.submission;
   db.prepare('UPDATE attendance_submissions SET attachment_path = ? WHERE id = ?').run(
@@ -206,13 +224,40 @@ router.post('/attendance/submission/:id/attachment', requireLogin, (req, res, ne
   // that do (e.g. a different certificate for a separate MC period).
   const throughDate = req.body.throughDate;
   if (/^\d{4}-\d{2}-\d{2}$/.test(throughDate || '') && throughDate > submission.date) {
-    db.prepare(
-      `UPDATE attendance_submissions
-       SET attachment_path = ?
-       WHERE roster_id = ? AND user_id = ? AND status = 'mc' AND attachment_path IS NULL
-         AND date > ? AND date <= ?`
-    ).run(req.file.path, submission.roster_id, submission.user_id, submission.date, throughDate);
+    propagateMcAttachment({
+      attachmentPath: req.file.path,
+      rosterId: submission.roster_id,
+      userId: submission.user_id,
+      fromDate: submission.date,
+      throughDate,
+    });
   }
+
+  res.redirect(req.body.returnTo || `/summary?date=${encodeURIComponent(req.body.returnDate || '')}`);
+});
+
+// For when a certificate was already attached (e.g. inline on Mark
+// Attendance, which has no "covers through" field of its own) and it turns
+// out to cover more days than realized at the time — extends the existing
+// file's coverage forward without needing to re-upload it.
+router.post('/attendance/submission/:id/extend-attachment', requireLogin, loadOwnedMcSubmission, (req, res) => {
+  const submission = req.submission;
+  if (!submission.attachment_path) {
+    return res.status(400).render('error', { message: 'Attach a file to this entry first, then extend its coverage.' });
+  }
+
+  const throughDate = req.body.throughDate;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(throughDate || '') || throughDate <= submission.date) {
+    return res.status(400).render('error', { message: "Pick a date after this entry's own date." });
+  }
+
+  propagateMcAttachment({
+    attachmentPath: submission.attachment_path,
+    rosterId: submission.roster_id,
+    userId: submission.user_id,
+    fromDate: submission.date,
+    throughDate,
+  });
 
   res.redirect(req.body.returnTo || `/summary?date=${encodeURIComponent(req.body.returnDate || '')}`);
 });
@@ -235,6 +280,7 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
 
   const { getDailySummary } = require('../lib/merge');
   const summary = getDailySummary(date);
+  const { lineRows } = buildReportLineRows(date);
 
   const confirmedLines = getConfirmedLines(date);
   const confirmation = {
@@ -259,7 +305,7 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
     confirmation,
     formatOffPeriod,
     excluded: getExcludedFromStrength(date),
-    personnelIndex: buildPersonnelIndex(summary),
+    personnelIndex: buildPersonnelIndex(summary, lineRows),
     initialCategory: PERSONNEL_CATEGORIES.includes(req.query.category) ? req.query.category : null,
   });
 });
