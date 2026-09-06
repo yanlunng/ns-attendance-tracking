@@ -43,13 +43,24 @@ const LINE_GROUPS = {
  * excluding their PSTAR sub-team), FP_PSTAR (either platoon's PSTAR
  * sub-team), STANDBY, or RBS_UNASSIGNED/FP_UNASSIGNED (still in the group's
  * own general pool) — mutually exclusive, together covering every RBS/FP
- * person exactly once.
+ * person exactly once. Someone cross-attached to PCP still counts toward
+ * their own group's PL1/PL2/FP1/FP2 (matching PCP's Platoon 1/2 pool) rather
+ * than falling into Unassigned — PCP holds them, but they're still that
+ * platoon's strength for parade-state purposes.
  */
 function classifyRbsFpBucket(person, sectionsById) {
   const unassignedKey = person.group_code === 'RBS' ? 'RBS_UNASSIGNED' : 'FP_UNASSIGNED';
   const section = sectionsById.get(person.outfield_section_id);
   if (!section) return unassignedKey;
-  if (section.is_staging) return section.name === 'Standby' ? 'STANDBY' : unassignedKey;
+  if (section.is_staging) {
+    if (section.name === 'Standby') return 'STANDBY';
+    if (section.group_code === 'PCP' && section.platoon) {
+      const platoon1Key = person.group_code === 'RBS' ? 'PL1' : 'FP1';
+      const platoon2Key = person.group_code === 'RBS' ? 'PL2' : 'FP2';
+      return section.platoon === 'Platoon 1' ? platoon1Key : platoon2Key;
+    }
+    return unassignedKey;
+  }
   if (section.name === 'PSTAR') return 'FP_PSTAR';
   if (person.group_code === 'RBS') return section.platoon === 'Platoon 1' ? 'PL1' : 'PL2';
   return section.platoon === 'Platoon 1' ? 'FP1' : 'FP2';
