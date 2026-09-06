@@ -20,13 +20,15 @@ function exceptionText(r) {
     return `Off (${period})${r.approvalState === 'pending' ? ', pending' : ''}`;
   }
   if (r.status === 'mc') return `MC${r.missingAttachment ? ' (no attachment yet)' : ''}`;
-  if (r.status === 'outpro') return `1st Day Outpro${r.approvalState === 'pending' ? ', pending' : ''}`;
-  return null; // present — no exception text
+  return null; // present, or 1st Day Outpro — still counted in strength that day, no exception text
 }
 
 function formatLine(label, rows) {
   const total = rows.length;
-  const present = rows.filter((r) => r.status === 'present').length;
+  // A 1st Day Outpro person is still physically at the unit that day (they
+  // only drop out of total strength starting the next day, per roster.js's
+  // activeRosterForDate) — so they count as present here, not an exception.
+  const present = rows.filter((r) => r.status === 'present' || r.status === 'outpro').length;
   const exceptions = rows
     .map((r) => {
       const text = exceptionText(r);
