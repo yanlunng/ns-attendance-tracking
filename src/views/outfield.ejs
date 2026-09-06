@@ -93,6 +93,33 @@
   <% } %>
 </p>
 
+<% if (group === 'PCP' && canEdit) { %>
+<% if (pcpError) { %><p class="error"><%= pcpError %></p><% } %>
+<p class="hint">
+  PCP has no fixed slots, so there's nothing to drag — type a name from RBS, FP, or PSTAR, pick a
+  platoon, and add them. This moves them out of wherever they currently sit (a Fire Unit slot,
+  Standby, etc.) into PCP's pool for that platoon.
+</p>
+<div class="add-exception">
+  <form method="post" action="/outfield/pcp/add" id="pcp-add-form">
+    <label>Person (RBS/FP/PSTAR) <input type="text" id="pcp-search-input" placeholder="Type a name…" autocomplete="off" /></label>
+    <input type="hidden" name="rosterId" id="pcp-selected-roster-id" />
+    <div id="pcp-search-results" class="search-results"></div>
+    <label>Platoon
+      <select name="platoon">
+        <option value="Platoon 1">Platoon 1</option>
+        <option value="Platoon 2">Platoon 2</option>
+      </select>
+    </label>
+    <button type="submit">Add</button>
+  </form>
+</div>
+<script>
+  window.PCP_SOURCE_ROSTER = <%- JSON.stringify(pcpSourceRoster.map(p => ({ id: p.id, name: p.name, ref_id: p.ref_id || '' }))) %>;
+</script>
+<script src="/outfield-pcp.js"></script>
+<% } %>
+
 <% if (canEdit) { %>
 <div class="add-exception">
   <label>Find someone on this board <input type="text" id="outfield-search-input" placeholder="Type a name…" autocomplete="off" /></label>

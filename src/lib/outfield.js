@@ -125,14 +125,16 @@ function getConfirmedAbsentIds() {
  * to HQ/DVR after they were last auto-sorted into their old group's pool —
  * gets reset so the normal auto-assign step picks them up into the correct
  * pool. Deliberate Fire Unit slot placements (is_staging = 0) are never
- * touched here, regardless of group changes.
+ * touched here, regardless of group changes. PCP's own pools are exempt —
+ * PCP deliberately holds people cross-attached from RBS/FP/PSTAR, so a
+ * group_code mismatch there is the intended state, not staleness.
  */
 function reconcileStaleStagingAssignments() {
   const stale = db
     .prepare(
       `SELECT r.id FROM roster r
        JOIN outfield_sections s ON s.id = r.outfield_section_id
-       WHERE s.is_staging = 1 AND s.group_code IS NOT r.group_code`
+       WHERE s.is_staging = 1 AND s.group_code IS NOT r.group_code AND s.group_code != 'PCP'`
     )
     .all();
   if (stale.length === 0) return;
@@ -235,7 +237,24 @@ function getBoard(groupCode) {
     autoAssignUnplaced(ownPeople, ownSection);
   }
 
-  const allPeople = [...hqDvrPeople, ...ownPeople].map((p) => ({
+  // Anyone already sitting in one of this group's own sections but not
+  // pulled in above — e.g. PCP holding people cross-attached from
+  // RBS/FP/PSTAR, who never match eligibleRosterForGroups([groupCode])
+  // since their roster group_code is genuinely something else.
+  const knownIds = new Set([...hqDvrPeople, ...ownPeople].map((p) => p.id));
+  const ownSectionIds = [
+    ...(ownSection ? [ownSection.id] : []),
+    ...(standbySection ? [standbySection.id] : []),
+    ...platoons.flatMap((p) => (p.sections ? p.sections.map((s) => s.id) : p.pool ? [p.pool.id] : [])),
+  ];
+  const crossAttachedPeople = ownSectionIds.length
+    ? db
+        .prepare(`SELECT * FROM roster WHERE outfield_section_id IN (${ownSectionIds.map(() => '?').join(',')})`)
+        .all(...ownSectionIds)
+        .filter((p) => !knownIds.has(p.id))
+    : [];
+
+  const allPeople = [...hqDvrPeople, ...ownPeople, ...crossAttachedPeople].map((p) => ({
     ...p,
     isOffOutfield: confirmedAbsent.has(p.id),
   }));

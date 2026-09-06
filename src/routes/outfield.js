@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const db = require('../db');
 const { requireLogin, requireEditor, blockSelfRole } = require('../auth');
-const { getBoard, assignPerson, OUTFIELD_GROUPS } = require('../lib/outfield');
+const { getBoard, assignPerson, eligibleRosterForGroups, OUTFIELD_GROUPS } = require('../lib/outfield');
 const { listKahDesignations, addKahDesignation, removeKahDesignation } = require('../lib/kahDesignations');
 const { buildOutfieldTemplateWorkbook, importOutfieldTemplateWorkbook } = require('../lib/outfieldTemplate');
 
@@ -24,11 +24,24 @@ router.get('/outfield', requireLogin, blockSelfRole, (req, res) => {
       canEdit,
       kahError: req.query.error || null,
       importError,
+      pcpSourceRoster: null,
+      pcpError: null,
     });
   }
 
   const board = getBoard(group === 'Others' ? 'HQ' : group);
-  res.render('outfield', { group, groups: OUTFIELD_GROUPS, board, kahDesignations: null, fullRoster: null, canEdit, kahError: null, importError });
+  res.render('outfield', {
+    group,
+    groups: OUTFIELD_GROUPS,
+    board,
+    kahDesignations: null,
+    fullRoster: null,
+    canEdit,
+    kahError: null,
+    importError,
+    pcpSourceRoster: group === 'PCP' ? eligibleRosterForGroups(['RBS', 'FP', 'PSTAR']) : null,
+    pcpError: group === 'PCP' ? req.query.error || null : null,
+  });
 });
 
 router.post('/outfield/kah/add', requireEditor, (req, res) => {
@@ -50,6 +63,29 @@ router.post('/outfield/kah/add', requireEditor, (req, res) => {
 router.post('/outfield/kah/:id/remove', requireEditor, (req, res) => {
   removeKahDesignation(req.params.id);
   res.redirect('/outfield?group=KAH');
+});
+
+// PCP isn't a real roster group_code, so nobody from RBS/FP/PSTAR ever shows
+// up on its board on their own — this is the only way to get them there.
+// Typing a name is deliberately the only input method (no drag needed):
+// placing someone here moves them out of wherever they currently sit
+// (their Fire Unit slot, Standby, etc.), same as any other assignPerson move.
+router.post('/outfield/pcp/add', requireEditor, (req, res) => {
+  const rosterId = Number(req.body.rosterId);
+  const platoonName = req.body.platoon;
+  const board = getBoard('PCP');
+  const platoon = board.platoons.find((p) => p.name === platoonName);
+
+  if (!rosterId || !platoon) {
+    return res.redirect('/outfield?group=PCP&error=' + encodeURIComponent('Pick a person and a platoon.'));
+  }
+
+  try {
+    assignPerson(rosterId, platoon.pool.id, null);
+    res.redirect('/outfield?group=PCP');
+  } catch (err) {
+    res.redirect('/outfield?group=PCP&error=' + encodeURIComponent(err.message));
+  }
 });
 
 router.post('/outfield/assign', requireEditor, (req, res) => {
