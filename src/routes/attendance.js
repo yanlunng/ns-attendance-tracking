@@ -9,7 +9,7 @@ const { getCycleRange } = require('../lib/settings');
 const { activeRosterForDate, getPhaseStagger, filterRosterForEditor, getExcludedFromStrength } = require('../lib/roster');
 const { submitOne, propagateMcAttachment } = require('../lib/attendanceSubmit');
 const { REPORT_LINES, canConfirmLine, canConfirmAll, buildReportLineRows } = require('../lib/reportLines');
-const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines } = require('../lib/reportConfirmations');
+const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines, unconfirmLine, unconfirmAllLines } = require('../lib/reportConfirmations');
 const { formatOffPeriod } = require('../lib/offPeriod');
 
 const router = express.Router();
@@ -331,6 +331,30 @@ router.post('/summary/confirm-all', requireLogin, blockSelfRole, (req, res) => {
     return res.status(403).render('error', { message: 'Only an unrestricted account (e.g. BC/BSM/B2IC) can confirm everything at once.' });
   }
   confirmAllLines(date, req.session.user.id);
+  res.redirect(`/summary?date=${encodeURIComponent(date)}`);
+});
+
+router.post('/summary/unconfirm-line', requireLogin, blockSelfRole, (req, res) => {
+  const { date, line } = req.body;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !REPORT_LINES.some((l) => l.key === line)) {
+    return res.status(400).render('error', { message: 'Invalid date or line.' });
+  }
+  if (!canConfirmLine(req.session.user.username, line)) {
+    return res.status(403).render('error', { message: "You're not permitted to unconfirm that line." });
+  }
+  unconfirmLine(date, line);
+  res.redirect(`/summary?date=${encodeURIComponent(date)}`);
+});
+
+router.post('/summary/unconfirm-all', requireLogin, blockSelfRole, (req, res) => {
+  const { date } = req.body;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
+    return res.status(400).render('error', { message: 'Invalid date.' });
+  }
+  if (!canConfirmAll(req.session.user.username)) {
+    return res.status(403).render('error', { message: 'Only an unrestricted account (e.g. BC/BSM/B2IC) can unconfirm everything at once.' });
+  }
+  unconfirmAllLines(date);
   res.redirect(`/summary?date=${encodeURIComponent(date)}`);
 });
 

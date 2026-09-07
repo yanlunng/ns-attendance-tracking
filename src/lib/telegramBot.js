@@ -8,7 +8,7 @@ const { isWorkingDay } = require('./workingDays');
 const { buildWhatsappSummary } = require('./whatsappSummary');
 const { formatOffPeriod } = require('./offPeriod');
 const { REPORT_LINES, canConfirmLine, canConfirmAll } = require('./reportLines');
-const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines } = require('./reportConfirmations');
+const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines, unconfirmLine, unconfirmAllLines } = require('./reportConfirmations');
 
 function todayStr() {
   const d = new Date();
@@ -197,11 +197,12 @@ async function sendConfirmationPanel(chatId, user, date) {
   const buttons = [];
   for (const { key, label } of REPORT_LINES) {
     if (!canConfirmLine(user.username, key)) continue;
-    const mark = confirmed.has(key) ? '✅' : '⬜';
-    buttons.push([{ text: `${mark} ${label}`, data: `confirmline:${date}:${key}` }]);
+    const isConfirmed = confirmed.has(key);
+    const mark = isConfirmed ? '✅' : '⬜';
+    buttons.push([{ text: `${mark} ${label}`, data: `${isConfirmed ? 'unconfirmline' : 'confirmline'}:${date}:${key}` }]);
   }
   if (canConfirmAll(user.username)) {
-    buttons.push([{ text: 'Confirm ALL', data: `confirmall:${date}` }]);
+    buttons.push([{ text: fullyConfirmed ? 'Unconfirm ALL' : 'Confirm ALL', data: `${fullyConfirmed ? 'unconfirmall' : 'confirmall'}:${date}` }]);
   }
 
   const status = fullyConfirmed
@@ -402,6 +403,17 @@ async function handleCallback(callbackQuery) {
     return sendConfirmationPanel(chatId, user, date);
   }
 
+  if (kind === 'unconfirmline') {
+    const [, date, lineKey] = parts;
+    if (!canConfirmLine(user.username, lineKey)) {
+      return telegramApi.sendMessage(chatId, "You're not permitted to unconfirm that line.");
+    }
+    unconfirmLine(date, lineKey);
+    const label = (REPORT_LINES.find((l) => l.key === lineKey) || {}).label || lineKey;
+    await telegramApi.sendMessage(chatId, `Unconfirmed ${label} for ${date}.`);
+    return sendConfirmationPanel(chatId, user, date);
+  }
+
   if (kind === 'confirmall') {
     const [, date] = parts;
     if (!canConfirmAll(user.username)) {
@@ -409,6 +421,16 @@ async function handleCallback(callbackQuery) {
     }
     confirmAllLines(date, user.id);
     await telegramApi.sendMessage(chatId, `Confirmed every line for ${date}.`);
+    return sendConfirmationPanel(chatId, user, date);
+  }
+
+  if (kind === 'unconfirmall') {
+    const [, date] = parts;
+    if (!canConfirmAll(user.username)) {
+      return telegramApi.sendMessage(chatId, 'Only an unrestricted account (e.g. BC/BSM/B2IC) can unconfirm everything at once.');
+    }
+    unconfirmAllLines(date);
+    await telegramApi.sendMessage(chatId, `Unconfirmed every line for ${date}.`);
     return sendConfirmationPanel(chatId, user, date);
   }
 

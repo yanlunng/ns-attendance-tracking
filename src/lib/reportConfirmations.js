@@ -40,4 +40,18 @@ function confirmAllLines(date, userId) {
   for (const { key } of REPORT_LINES) confirmLine(date, key, userId);
 }
 
-module.exports = { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines };
+/**
+ * Undoes a wrongly-clicked confirmation — just clears the confirmed mark so
+ * the line shows as not-confirmed again. Deliberately doesn't touch any
+ * Present entries confirmLine may have auto-filled; those are now real
+ * attendance records, editable individually via Mark Attendance if needed.
+ */
+function unconfirmLine(date, lineKey) {
+  db.prepare('DELETE FROM report_confirmations WHERE date = ? AND line = ?').run(date, lineKey);
+}
+
+function unconfirmAllLines(date) {
+  db.prepare('DELETE FROM report_confirmations WHERE date = ?').run(date);
+}
+
+module.exports = { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines, unconfirmLine, unconfirmAllLines };
