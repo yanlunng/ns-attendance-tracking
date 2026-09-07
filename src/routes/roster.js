@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
-const { requireAdmin, requireBcOrBsm } = require('../auth');
+const { requireAdmin } = require('../auth');
 const { parseRosterWorkbook } = require('../lib/rosterImport');
 const { upsertRoster } = require('../lib/rosterUpsert');
 const { getSetting, setSetting, getCountWeekends } = require('../lib/settings');
@@ -168,10 +168,11 @@ router.post('/roster/:id/ict-cancelled', requireAdmin, (req, res) => {
   res.redirect('/roster');
 });
 
-// The effective date defaults to today for whoever cancels it (any admin),
-// but only BC/BSM get to override it afterward — e.g. backdating to when
-// the person actually stopped being able to continue ICT.
-router.post('/roster/:id/ict-cancelled-date', requireBcOrBsm, (req, res) => {
+// The effective date defaults to today when checked, and any admin can
+// adjust it afterward — e.g. backdating to when the person actually stopped
+// being able to continue ICT. The Roster page is already admin-only, so
+// there's no narrower role to further restrict this to.
+router.post('/roster/:id/ict-cancelled-date', requireAdmin, (req, res) => {
   const effectiveDate = req.body.effectiveDate;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate || '')) {
     return renderRosterError(res, 'Effective date is not valid.');
