@@ -9,6 +9,7 @@ const DEFERMENT_HEADERS = ['deferment status'];
 const MOBILE_HEADERS = ['mobile', 'mobile number', 'mobile no', 'handphone', 'hp', 'contact'];
 const PHASE_HEADERS = ['phases', 'phase'];
 const POSITION_HEADERS = ['position descr', 'position'];
+const VOCATION_HEADERS = ['vocation descr', 'vocation', 'voc descr'];
 
 // Sheet names preferred over "just take the first sheet", checked case-insensitively.
 const PREFERRED_SHEET_NAMES = ['ehrnominal'];
@@ -99,6 +100,18 @@ function deriveDeferred(defermentStatusText) {
   return String(defermentStatusText).toUpperCase().includes('DEFERRED');
 }
 
+/**
+ * Sub-categorizes HQ personnel by role, surfaced as sub-tabs on the Battery
+ * Establishment page (e.g. "Signaller" vs "Others") — extensible for more
+ * roles later without a schema change, just another branch here. Only
+ * meaningful within HQ; anyone else's role_tag is left null.
+ */
+function deriveRoleTag(groupCode, vocationText) {
+  if (groupCode !== 'HQ' || !vocationText) return null;
+  if (String(vocationText).toUpperCase().includes('SIG OPR')) return 'Signaller';
+  return null;
+}
+
 /** Everyone not explicitly in "Commander Phase" is treated as Main Body. */
 function deriveCommanderPhase(phaseText) {
   if (!phaseText) return false;
@@ -154,8 +167,9 @@ async function parseRosterWorkbook(buffer) {
   const mobileCol = headers.findIndex((h) => MOBILE_HEADERS.includes(h));
   const phaseCol = headers.findIndex((h) => PHASE_HEADERS.includes(h));
   const positionCol = headers.findIndex((h) => POSITION_HEADERS.includes(h));
+  const vocationCol = headers.findIndex((h) => VOCATION_HEADERS.includes(h));
   const mappedCols = new Set(
-    [nameCol, idCol, unitCol, dobCol, subunit1Col, defermentCol, mobileCol, phaseCol, positionCol].filter(
+    [nameCol, idCol, unitCol, dobCol, subunit1Col, defermentCol, mobileCol, phaseCol, positionCol, vocationCol].filter(
       (c) => c !== -1
     )
   );
@@ -178,6 +192,8 @@ async function parseRosterWorkbook(buffer) {
     const defermentText = defermentCol !== -1 ? cellText(row.getCell(defermentCol).value) : null;
     const phaseText = phaseCol !== -1 ? cellText(row.getCell(phaseCol).value) : null;
     const positionText = positionCol !== -1 ? cellText(row.getCell(positionCol).value) : null;
+    const vocationText = vocationCol !== -1 ? cellText(row.getCell(vocationCol).value) : null;
+    const groupCode = deriveGroup(subunit1, positionText);
 
     people.push({
       name,
@@ -186,10 +202,11 @@ async function parseRosterWorkbook(buffer) {
       date_of_birth: dobCol !== -1 ? parseDob(row.getCell(dobCol).value) : null,
       mobile: mobileCol !== -1 ? cellText(row.getCell(mobileCol).value) : null,
       subunit1_raw: subunit1,
-      group_code: deriveGroup(subunit1, positionText),
+      group_code: groupCode,
       is_deferred: deriveDeferred(defermentText) ? 1 : 0,
       is_commander_phase: deriveCommanderPhase(phaseText) ? 1 : 0,
       position_descr: positionText,
+      vocation_descr: vocationText,
       extra: Object.keys(extra).length ? JSON.stringify(extra) : null,
     });
   });
@@ -201,4 +218,4 @@ async function parseRosterWorkbook(buffer) {
   return people;
 }
 
-module.exports = { parseRosterWorkbook, deriveGroup, GROUP_CODES };
+module.exports = { parseRosterWorkbook, deriveGroup, deriveRoleTag, GROUP_CODES };

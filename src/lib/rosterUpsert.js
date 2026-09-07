@@ -1,4 +1,5 @@
 const db = require('../db');
+const { deriveRoleTag } = require('./rosterImport');
 
 function normalizeName(name) {
   return String(name || '').trim().toUpperCase().replace(/\s+/g, ' ');
@@ -49,15 +50,15 @@ function upsertRoster(people, mode) {
 
   const update = db.prepare(`
     UPDATE roster SET
-      name = ?, ref_id = ?, unit = ?, date_of_birth = ?, mobile = ?, subunit1_raw = ?, position_descr = ?, extra = ?, active = 1,
+      name = ?, ref_id = ?, unit = ?, date_of_birth = ?, mobile = ?, subunit1_raw = ?, position_descr = ?, vocation_descr = ?, role_tag = ?, extra = ?, active = 1,
       is_deferred = ?, is_ict_cancelled = 0, ict_cancelled_date = NULL, is_commander_phase = ?,
       group_code = CASE WHEN group_source = 'manual' THEN group_code ELSE ? END,
       group_source = CASE WHEN group_source = 'manual' THEN group_source ELSE 'auto' END
     WHERE id = ?
   `);
   const insert = db.prepare(`
-    INSERT INTO roster (name, ref_id, unit, date_of_birth, mobile, subunit1_raw, position_descr, extra, is_deferred, is_ict_cancelled, ict_cancelled_date, is_commander_phase, group_code, group_source, active)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, 'auto', 1)
+    INSERT INTO roster (name, ref_id, unit, date_of_birth, mobile, subunit1_raw, position_descr, vocation_descr, role_tag, extra, is_deferred, is_ict_cancelled, ict_cancelled_date, is_commander_phase, group_code, group_source, active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, 'auto', 1)
   `);
 
   const tx = db.transaction(() => {
@@ -66,6 +67,10 @@ function upsertRoster(people, mode) {
     for (const person of people) {
       const existing = match(person);
       if (existing) {
+        // role_tag is derived from whichever group_code actually ends up
+        // stored (protected by a manual override, same as group_code
+        // itself) — not blindly from this sheet's own freshly-derived group.
+        const finalGroupCode = existing.group_source === 'manual' ? existing.group_code : person.group_code;
         update.run(
           person.name,
           person.ref_id,
@@ -74,6 +79,8 @@ function upsertRoster(people, mode) {
           person.mobile,
           person.subunit1_raw,
           person.position_descr,
+          person.vocation_descr,
+          deriveRoleTag(finalGroupCode, person.vocation_descr),
           person.extra,
           person.is_deferred ? 1 : 0,
           person.is_commander_phase ? 1 : 0,
@@ -90,6 +97,8 @@ function upsertRoster(people, mode) {
           person.mobile,
           person.subunit1_raw,
           person.position_descr,
+          person.vocation_descr,
+          deriveRoleTag(person.group_code, person.vocation_descr),
           person.extra,
           person.is_deferred ? 1 : 0,
           person.is_commander_phase ? 1 : 0,

@@ -102,6 +102,8 @@ form.inline { display: inline; }
 }
 .tab:hover { color: var(--text); }
 .tab-active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.sub-tab-bar { margin-top: -12px; }
+.sub-tab-bar .tab { padding: 6px 12px; font-size: 13px; }
 
 .page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 12px; flex-wrap: wrap; }
 

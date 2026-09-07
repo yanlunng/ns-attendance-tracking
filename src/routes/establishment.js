@@ -8,6 +8,7 @@ const { importEstablishmentWorkbook } = require('../lib/establishmentImport');
 
 const router = express.Router();
 const TABS = [...GROUP_CODES, 'UNASSIGNED', 'ALL'];
+const DRIVING_CATS = ['A', 'B', 'C', 'D'];
 const uploadTemplate = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 function rosterList() {
@@ -25,11 +26,26 @@ router.get('/establishment', requireLogin, blockSelfRole, (req, res) => {
     else counts.UNASSIGNED++;
   }
 
-  const filtered = roster.filter((person) => {
+  let filtered = roster.filter((person) => {
     if (activeTab === 'ALL') return true;
     if (activeTab === 'UNASSIGNED') return !person.group_code;
     return person.group_code === activeTab;
   });
+
+  // HQ sub-tabs by role_tag — extensible for more roles later without
+  // touching this route, just another value flowing through role_tag.
+  let hqRoleCounts = null;
+  const activeRole = req.query.role || null;
+  if (activeTab === 'HQ') {
+    const hqPeople = roster.filter((p) => p.group_code === 'HQ');
+    hqRoleCounts = {
+      Signaller: hqPeople.filter((p) => p.role_tag === 'Signaller').length,
+      Others: hqPeople.filter((p) => p.role_tag !== 'Signaller').length,
+    };
+    if (activeRole === 'Signaller' || activeRole === 'Others') {
+      filtered = filtered.filter((p) => (activeRole === 'Signaller' ? p.role_tag === 'Signaller' : p.role_tag !== 'Signaller'));
+    }
+  }
 
   res.render('establishment', {
     tabs: TABS,
@@ -39,6 +55,8 @@ router.get('/establishment', requireLogin, blockSelfRole, (req, res) => {
     groupCodes: GROUP_CODES,
     canEdit: ['admin', 'editor'].includes(req.session.user.role),
     importError: req.query.importError || null,
+    hqRoleCounts,
+    activeRole,
   });
 });
 
@@ -48,6 +66,15 @@ router.post('/establishment/:id/group', requireEditor, (req, res) => {
     group,
     req.params.id
   );
+  res.redirect(`/establishment?group=${encodeURIComponent(req.body.returnTab || 'ALL')}`);
+});
+
+// Driving cat is entered manually here (never derived from the NR sheet)
+// and persists across roster re-uploads, unlike group_code — see
+// rosterUpsert.js, which never touches this column. Drivers only.
+router.post('/establishment/:id/driving-cat', requireEditor, (req, res) => {
+  const value = DRIVING_CATS.includes(req.body.drivingCat) ? req.body.drivingCat : null;
+  db.prepare("UPDATE roster SET driving_cat = ? WHERE id = ? AND group_code = 'DVR'").run(value, req.params.id);
   res.redirect(`/establishment?group=${encodeURIComponent(req.body.returnTab || 'ALL')}`);
 });
 

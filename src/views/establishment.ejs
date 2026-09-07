@@ -37,12 +37,20 @@
   <% }) %>
 </div>
 
+<% if (activeTab === 'HQ' && hqRoleCounts) { %>
+<div class="tab-bar sub-tab-bar">
+  <a href="/establishment?group=HQ" class="tab <%= !activeRole ? 'tab-active' : '' %>">All (<%= counts.HQ %>)</a>
+  <a href="/establishment?group=HQ&role=Signaller" class="tab <%= activeRole === 'Signaller' ? 'tab-active' : '' %>">Signaller (<%= hqRoleCounts.Signaller %>)</a>
+  <a href="/establishment?group=HQ&role=Others" class="tab <%= activeRole === 'Others' ? 'tab-active' : '' %>">Others (<%= hqRoleCounts.Others %>)</a>
+</div>
+<% } %>
+
 <% if (roster.length === 0) { %>
   <p class="empty">Nobody in this group.</p>
 <% } else { %>
 <table class="attendance-table">
   <thead>
-    <tr><th>Name</th><th>Rank/ID</th><th>Sub Unit 1</th><th>Group</th><% if (canEdit) { %><th></th><% } %></tr>
+    <tr><th>Name</th><th>Rank/ID</th><th>Sub Unit 1</th><th>Group</th><th>Driving Cat</th><% if (canEdit) { %><th></th><% } %></tr>
   </thead>
   <tbody>
     <% roster.forEach(person => { %>
@@ -53,6 +61,23 @@
       <td data-label="Group">
         <span class="badge badge-<%= person.group_code ? 'leave' : 'warn' %>"><%= person.group_code || 'Unassigned' %></span>
         <% if (person.group_source === 'manual') { %><span class="hint">(manual)</span><% } %>
+      </td>
+      <td data-label="Driving Cat">
+        <% if (person.group_code === 'DVR') { %>
+          <% if (canEdit) { %>
+          <form method="post" action="/establishment/<%= person.id %>/driving-cat">
+            <input type="hidden" name="returnTab" value="<%= activeTab %>" />
+            <select name="drivingCat" onchange="this.form.submit()">
+              <option value="">—</option>
+              <% ['A', 'B', 'C', 'D'].forEach(cat => { %>
+                <option value="<%= cat %>" <%= person.driving_cat === cat ? 'selected' : '' %>><%= cat %></option>
+              <% }) %>
+            </select>
+          </form>
+          <% } else { %>
+            <%= person.driving_cat || '—' %>
+          <% } %>
+        <% } else { %>—<% } %>
       </td>
       <% if (canEdit) { %>
       <td>
