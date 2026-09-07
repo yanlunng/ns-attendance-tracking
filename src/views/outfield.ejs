@@ -79,9 +79,11 @@
   <% if (canEdit) { %>
   <div class="add-exception">
     <form method="post" action="/outfield/kah/add" id="kah-add-form">
-      <label>Person <input type="text" id="kah-search-input" placeholder="Type a name…" autocomplete="off" /></label>
-      <input type="hidden" name="rosterId" id="kah-selected-roster-id" />
-      <div id="kah-search-results" class="search-results"></div>
+      <div class="search-wrap">
+        <label>Person <input type="text" id="kah-search-input" placeholder="Type a name…" autocomplete="off" /></label>
+        <input type="hidden" name="rosterId" id="kah-selected-roster-id" />
+        <div id="kah-search-results" class="search-results"></div>
+      </div>
       <label>Role <input type="text" name="roleText" placeholder="e.g. BC" required /></label>
       <button type="submit">Add</button>
     </form>
@@ -121,9 +123,11 @@
 </p>
 <div class="add-exception">
   <form method="post" action="/outfield/pcp/add" id="pcp-add-form">
-    <label>Person (RBS/FP/PSTAR) <input type="text" id="pcp-search-input" placeholder="Type a name…" autocomplete="off" /></label>
-    <input type="hidden" name="rosterId" id="pcp-selected-roster-id" />
-    <div id="pcp-search-results" class="search-results"></div>
+    <div class="search-wrap">
+      <label>Person (RBS/FP/PSTAR) <input type="text" id="pcp-search-input" placeholder="Type a name…" autocomplete="off" /></label>
+      <input type="hidden" name="rosterId" id="pcp-selected-roster-id" />
+      <div id="pcp-search-results" class="search-results"></div>
+    </div>
     <label>Platoon
       <select name="platoon">
         <option value="Platoon 1">Platoon 1</option>
@@ -281,9 +285,11 @@
 <% if (canEdit) { %>
 <div class="add-exception">
   <form method="post" action="/outfield/vehicles/add" id="vehicle-add-form">
-    <label>Driver (RBS/FP/PSTAR/HQ/DVR) <input type="text" id="vehicle-search-input" placeholder="Type a name…" autocomplete="off" /></label>
-    <input type="hidden" name="rosterId" id="vehicle-selected-roster-id" />
-    <div id="vehicle-search-results" class="search-results"></div>
+    <div class="search-wrap">
+      <label>Driver (RBS/FP/PSTAR/HQ/DVR) <input type="text" id="vehicle-search-input" placeholder="Type a name…" autocomplete="off" /></label>
+      <input type="hidden" name="rosterId" id="vehicle-selected-roster-id" />
+      <div id="vehicle-search-results" class="search-results"></div>
+    </div>
     <label>Vehicle
       <input type="text" name="vehicleName" list="vehicle-name-options" placeholder="e.g. 5-Tonner 1" required />
       <datalist id="vehicle-name-options">

@@ -360,6 +360,7 @@ button.stat:hover, a.stat:hover { border-color: var(--accent); }
 
 .add-exception { position: relative; max-width: 420px; margin: 16px 0 4px; }
 .add-exception input[type=text] { width: 100%; }
+.search-wrap { position: relative; }
 .search-results {
   display: none;
   position: absolute;
