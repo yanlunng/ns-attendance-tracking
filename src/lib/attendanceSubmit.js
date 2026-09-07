@@ -68,15 +68,45 @@ function submitOne({ date, rosterId, submitterId, submitterRole, submitterUserna
  * Extends an already-attached MC certificate's coverage to additional
  * consecutive days for the same person + submitter, without re-uploading —
  * reuses whichever attachment_path is already on the anchor submission.
- * Only fills in days that don't already have their own attachment.
+ * Fills in the attachment for days already marked MC without one of their
+ * own, and — since a certificate covering a date range means the person
+ * genuinely is on MC for every one of those days, not just "has a file for
+ * whichever days someone happened to separately mark" — also creates a new
+ * MC entry (with this same attachment) for any working day in the range
+ * that has no submission from this submitter at all yet. Never touches a
+ * day that already has ANY real status recorded, working or not.
  */
 function propagateMcAttachment({ attachmentPath, rosterId, userId, fromDate, throughDate }) {
-  db.prepare(
-    `UPDATE attendance_submissions
-     SET attachment_path = ?
-     WHERE roster_id = ? AND user_id = ? AND status = 'mc' AND attachment_path IS NULL
-       AND date > ? AND date <= ?`
-  ).run(attachmentPath, rosterId, userId, fromDate, throughDate);
+  const tx = db.transaction(() => {
+    db.prepare(
+      `UPDATE attendance_submissions
+       SET attachment_path = ?
+       WHERE roster_id = ? AND user_id = ? AND status = 'mc' AND attachment_path IS NULL
+         AND date > ? AND date <= ?`
+    ).run(attachmentPath, rosterId, userId, fromDate, throughDate);
+
+    const existingStmt = db.prepare('SELECT 1 FROM attendance_submissions WHERE date = ? AND roster_id = ? AND user_id = ?');
+    const insert = db.prepare(
+      `INSERT INTO attendance_submissions (date, roster_id, user_id, status, approval_status, attachment_path, submitted_at)
+       VALUES (?, ?, ?, 'mc', 'approved', ?, datetime('now'))`
+    );
+
+    const cursor = new Date(`${fromDate}T00:00:00Z`);
+    const end = new Date(`${throughDate}T00:00:00Z`);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+    while (cursor <= end) {
+      const date = cursor.toISOString().slice(0, 10);
+      if (
+        isWorkingDay(date) &&
+        activeRosterForDate(date).some((p) => p.id === rosterId) &&
+        !existingStmt.get(date, rosterId, userId)
+      ) {
+        insert.run(date, rosterId, userId, attachmentPath);
+      }
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+  });
+  tx();
 }
 
 module.exports = { submitOne, propagateMcAttachment, STATUSES, OFF_PERIODS };
