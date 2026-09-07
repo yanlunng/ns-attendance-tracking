@@ -300,12 +300,26 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
   const { lineRows } = buildReportLineRows(date);
 
   const confirmedLines = getConfirmedLines(date);
+  const buildLine = ({ key, label }) => ({
+    key,
+    label,
+    confirmed: confirmedLines.has(key),
+    canConfirm: canConfirmLine(req.session.user.username, key),
+  });
+  const childrenByParent = new Map();
+  for (const l of REPORT_LINES) {
+    if (!l.parentKey) continue;
+    if (!childrenByParent.has(l.parentKey)) childrenByParent.set(l.parentKey, []);
+    childrenByParent.get(l.parentKey).push(buildLine(l));
+  }
+
   const confirmation = {
-    lines: REPORT_LINES.map(({ key, label }) => ({
-      key,
-      label,
-      confirmed: confirmedLines.has(key),
-      canConfirm: canConfirmLine(req.session.user.username, key),
+    // FU1-6 nest under their platoon line as a collapsible sub-tree instead
+    // of showing as separate top-level rows — same underlying confirmable
+    // lines, just organized so they're not visually duplicating PL1/PL2.
+    lines: REPORT_LINES.filter((l) => !l.parentKey).map((l) => ({
+      ...buildLine(l),
+      children: childrenByParent.get(l.key) || [],
     })),
     fullyConfirmed: isDayFullyConfirmed(date),
     canConfirmAll: canConfirmAll(req.session.user.username),

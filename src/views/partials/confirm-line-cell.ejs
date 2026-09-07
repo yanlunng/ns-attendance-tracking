@@ -1,0 +1,15 @@
+<% if (l.canConfirm) { %>
+  <% if (l.confirmed) { %>
+  <form method="post" action="/summary/unconfirm-line" class="inline">
+    <input type="hidden" name="date" value="<%= date %>" />
+    <input type="hidden" name="line" value="<%= l.key %>" />
+    <button type="submit" class="link-btn">Unconfirm</button>
+  </form>
+  <% } else { %>
+  <form method="post" action="/summary/confirm-line" class="inline">
+    <input type="hidden" name="date" value="<%= date %>" />
+    <input type="hidden" name="line" value="<%= l.key %>" />
+    <button type="submit">Confirm</button>
+  </form>
+  <% } %>
+<% } %>

@@ -109,4 +109,15 @@
     render();
     panel.scrollIntoView({ block: 'start' });
   }
+
+  document.addEventListener('click', function (e) {
+    var toggle = e.target.closest('.line-toggle');
+    if (!toggle) return;
+    var key = toggle.getAttribute('data-toggle-children');
+    var expanded = toggle.classList.toggle('is-expanded');
+    toggle.textContent = expanded ? '▾' : '▸';
+    document.querySelectorAll('.line-child[data-parent-key="' + key + '"]').forEach(function (row) {
+      row.style.display = expanded ? '' : 'none';
+    });
+  });
 })();

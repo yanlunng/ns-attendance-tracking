@@ -52,7 +52,7 @@ function buildWhatsappSummary(date) {
     '',
     `To be completed by *${DEADLINE_TIME} today*.`,
     '',
-    ...REPORT_LINES.map(({ key, label }) => formatLine(label, lineRows[key])),
+    ...REPORT_LINES.filter((l) => !l.hideFromText).map(({ key, label }) => formatLine(label, lineRows[key])),
   ];
 
   if (unclassified.length > 0) {

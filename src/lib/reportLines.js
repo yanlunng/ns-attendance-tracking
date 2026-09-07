@@ -1,18 +1,24 @@
 const db = require('../db');
 const { getDailySummary } = require('./merge');
 
-// The lines of the parade-state report, in display order.
+// The lines of the parade-state report, in display order. FU1-6 carry a
+// parentKey — they're nested under their platoon line on the Summary page's
+// confirmation table (a collapsible sub-tree, not a separate top-level row)
+// and left out of the WhatsApp/Telegram text entirely, since showing both
+// "PL1: x/y" and "FU1/FU2/FU3: ..." there is redundant with no room to
+// collapse it. They stay as plain flat lines everywhere else (Telegram's
+// confirmation panel, drill-down, confirm permissions).
 const REPORT_LINES = [
   { key: 'BTY_HQ', label: 'Bty HQ' },
   { key: 'PL1', label: 'PL1' },
-  { key: 'FU1', label: 'FU1' },
-  { key: 'FU2', label: 'FU2' },
-  { key: 'FU3', label: 'FU3' },
+  { key: 'FU1', label: 'FU1', parentKey: 'PL1', hideFromText: true },
+  { key: 'FU2', label: 'FU2', parentKey: 'PL1', hideFromText: true },
+  { key: 'FU3', label: 'FU3', parentKey: 'PL1', hideFromText: true },
   { key: 'FP1', label: 'FP1' },
   { key: 'PL2', label: 'PL2' },
-  { key: 'FU4', label: 'FU4' },
-  { key: 'FU5', label: 'FU5' },
-  { key: 'FU6', label: 'FU6' },
+  { key: 'FU4', label: 'FU4', parentKey: 'PL2', hideFromText: true },
+  { key: 'FU5', label: 'FU5', parentKey: 'PL2', hideFromText: true },
+  { key: 'FU6', label: 'FU6', parentKey: 'PL2', hideFromText: true },
   { key: 'FP2', label: 'FP2' },
   { key: 'PSTAR', label: 'PSTAR' },
   { key: 'FP_PSTAR', label: 'FP PSTAR' },

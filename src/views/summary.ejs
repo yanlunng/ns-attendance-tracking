@@ -63,26 +63,24 @@
     <tbody>
       <% confirmation.lines.forEach(l => { %>
       <tr>
-        <td data-label="Line"><button type="button" class="line-link" data-category="<%= l.key %>"><%= l.label %></button></td>
-        <td data-label="Status"><%= l.confirmed ? '✅ Confirmed' : '⬜ Not confirmed' %></td>
-        <td>
-          <% if (l.canConfirm) { %>
-          <% if (l.confirmed) { %>
-          <form method="post" action="/summary/unconfirm-line" class="inline">
-            <input type="hidden" name="date" value="<%= date %>" />
-            <input type="hidden" name="line" value="<%= l.key %>" />
-            <button type="submit" class="link-btn">Unconfirm</button>
-          </form>
-          <% } else { %>
-          <form method="post" action="/summary/confirm-line" class="inline">
-            <input type="hidden" name="date" value="<%= date %>" />
-            <input type="hidden" name="line" value="<%= l.key %>" />
-            <button type="submit">Confirm</button>
-          </form>
+        <td data-label="Line">
+          <% if (l.children.length > 0) { %>
+          <button type="button" class="line-toggle" data-toggle-children="<%= l.key %>">▸</button>
           <% } %>
-          <% } %>
+          <button type="button" class="line-link" data-category="<%= l.key %>"><%= l.label %></button>
         </td>
+        <td data-label="Status"><%= l.confirmed ? '✅ Confirmed' : '⬜ Not confirmed' %></td>
+        <td><%- include('partials/confirm-line-cell', { l, date }) %></td>
       </tr>
+      <% l.children.forEach(c => { %>
+      <tr class="line-child" data-parent-key="<%= l.key %>" style="display:none">
+        <td data-label="Line" class="line-child-cell">
+          <button type="button" class="line-link" data-category="<%= c.key %>"><%= c.label %></button>
+        </td>
+        <td data-label="Status"><%= c.confirmed ? '✅ Confirmed' : '⬜ Not confirmed' %></td>
+        <td><%- include('partials/confirm-line-cell', { l: c, date }) %></td>
+      </tr>
+      <% }) %>
       <% }) %>
     </tbody>
   </table>
