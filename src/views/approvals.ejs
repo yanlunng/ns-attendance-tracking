@@ -74,4 +74,27 @@
   </tbody>
 </table>
 <% } %>
+
+<h2>MC watch (FYI)</h2>
+<p class="hint">
+  Anyone with 3+ cumulative MC days this cycle — informational here; go to Roster to action a
+  "Cancel ICT" for someone on this list.
+</p>
+<% if (mcThresholdList.length === 0) { %>
+  <p class="empty">Nobody has hit the threshold yet.</p>
+<% } else { %>
+<table class="attendance-table">
+  <thead><tr><th>Name</th><th>Rank</th><th>Group</th><th>MC days this cycle</th></tr></thead>
+  <tbody>
+    <% mcThresholdList.forEach(person => { %>
+    <tr>
+      <td data-label="Name"><%= person.name %></td>
+      <td data-label="Rank"><%= person.ref_id || '' %></td>
+      <td data-label="Group"><%= person.group_code || '—' %></td>
+      <td data-label="MC days this cycle"><%= person.mcDays %></td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>
 <%- include('partials/footer') %>

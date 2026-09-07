@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { requireAdmin } = require('../auth');
 const { formatOffPeriod } = require('../lib/offPeriod');
+const { getMcThresholdList } = require('../lib/mcSummary');
 
 const router = express.Router();
 
@@ -51,6 +52,7 @@ router.get('/approvals', requireAdmin, (req, res) => {
     pendingOff: pendingGroups('off'),
     pendingOutpro: pendingGroups('outpro'),
     formatOffPeriod,
+    mcThresholdList: getMcThresholdList(),
   });
 });
 
