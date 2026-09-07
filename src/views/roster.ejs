@@ -8,55 +8,14 @@
   </p>
 <% } %>
 
-<% if (freshCredentials && freshCredentials.length > 0) { %>
-  <div class="upload-box">
-    <h2>New personal accounts created (<%= freshCredentials.length %>)</h2>
-    <p class="hint">
-      Username = mobile number, password = date of birth (MMDDYYYY) — both computed from the
-      roster sheet, so this list is just for your reference and can be recomputed from the sheet
-      if you lose it. Each person can change their password after logging in under "Change password".
-    </p>
-    <table class="attendance-table">
-      <thead><tr><th>Name</th><th>Username</th><th>Password</th></tr></thead>
-      <tbody>
-        <% freshCredentials.forEach(c => { %>
-        <tr>
-          <td data-label="Name"><%= c.name %></td>
-          <td data-label="Username"><%= c.username %></td>
-          <td data-label="Password">
-            <code><%= c.password %></code>
-            <% if (c.usedDefaultPassword) { %><span class="badge badge-warn">no DOB on file</span><% } %>
-          </td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
-<% } %>
-
-<% if (skippedAccounts && skippedAccounts.length > 0) { %>
-  <div class="upload-box">
-    <h2>Couldn't create an account for (<%= skippedAccounts.length %>)</h2>
-    <p class="hint">Missing mobile number and/or date of birth in the sheet — fix the sheet and re-upload to provision them.</p>
-    <table class="attendance-table">
-      <thead><tr><th>Name</th><th>Reason</th></tr></thead>
-      <tbody>
-        <% skippedAccounts.forEach(s => { %>
-        <tr><td data-label="Name"><%= s.name %></td><td data-label="Reason"><%= s.reason %></td></tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
-<% } %>
-
 <div class="upload-box">
   <h2>Upload Excel roster</h2>
   <p class="hint">
     Prefers a sheet named "ehrNominal" (falls back to the first sheet). Requires a
     <strong>Name</strong> column (or "Full Name" / "Complete Name" / "Personnel" / "Nominal Roll").
     Optional columns: ID/Rank/Staff ID, Unit/Department, Date of Birth, Sub Unit 1 (used to derive
-    the KAH/RBS/PSTAR/FP group), Mobile (used to auto-create each person's own read-only login),
-    Phases (Commander Phase vs Main Body — see below). Any other columns are kept as extra data.
+    the KAH/RBS/PSTAR/FP group), Phases (Commander Phase vs Main Body — see below). Any other
+    columns are kept as extra data.
   </p>
   <p class="hint">
     <strong>Replace</strong> makes the sheet the complete roster — anyone not in it is deleted,

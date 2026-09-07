@@ -144,6 +144,11 @@ addColumnIfMissing('users', 'roster_id', 'INTEGER REFERENCES roster(id) ON DELET
 addColumnIfMissing('users', 'telegram_link_code', 'TEXT');
 raw.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_roster_id ON users(roster_id) WHERE roster_id IS NOT NULL');
 
+// Individual per-person "self" accounts were retired — role accounts (BC,
+// BSM, PC, etc.) are enough. Runs on every startup, not just once, so it
+// also enforces the policy against a self account created any other way.
+raw.exec("DELETE FROM users WHERE role = 'self'");
+
 // Superseded by the telegram_links table (which supports multiple linked
 // chats per user, needed for KAH role accounts) — drop the old 1:1 column
 // if an earlier local run of this feature created it.

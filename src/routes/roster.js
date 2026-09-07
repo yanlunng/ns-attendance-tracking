@@ -5,7 +5,6 @@ const db = require('../db');
 const { requireAdmin, requireBcOrBsm } = require('../auth');
 const { parseRosterWorkbook } = require('../lib/rosterImport');
 const { upsertRoster } = require('../lib/rosterUpsert');
-const { provisionSelfAccounts } = require('../lib/selfAccounts');
 const { getSetting, setSetting, getCountWeekends } = require('../lib/settings');
 const { nextMonday } = require('../lib/workingDays');
 const { listOutfieldDates, upsertOutfieldDate, removeOutfieldDate } = require('../lib/outfieldDates');
@@ -48,8 +47,6 @@ function renderRosterError(res, message) {
     error: message,
     imported: null,
     removed: null,
-    freshCredentials: null,
-    skippedAccounts: null,
     kahAccounts: kahAccountsList(),
     mcThresholdList: getMcThresholdList(),
     today: todayStr(),
@@ -58,17 +55,11 @@ function renderRosterError(res, message) {
 }
 
 router.get('/roster', requireAdmin, (req, res) => {
-  const freshCredentials = req.session.freshCredentials || null;
-  const skippedAccounts = req.session.skippedAccounts || null;
-  delete req.session.freshCredentials;
-  delete req.session.skippedAccounts;
   res.render('roster', {
     roster: rosterList(),
     error: null,
     imported: req.query.imported || null,
     removed: req.query.removed || null,
-    freshCredentials,
-    skippedAccounts,
     kahAccounts: kahAccountsList(),
     mcThresholdList: getMcThresholdList(),
     today: todayStr(),
@@ -103,10 +94,6 @@ router.post('/roster/upload', requireAdmin, upload.single('file'), async (req, r
     setSetting('cycle_start_date', startDate);
     setSetting('cycle_end_date', endDate);
     setSetting('mainbody_phase_start_date', mainBodyStart);
-
-    const { created, skipped } = provisionSelfAccounts(rosterList());
-    if (created.length > 0) req.session.freshCredentials = created;
-    if (skipped.length > 0) req.session.skippedAccounts = skipped;
 
     // Telegram links are cycle-scoped, not permanent identity — wipe them on
     // every roster reset so no chat_id is ever carried across cycles.
