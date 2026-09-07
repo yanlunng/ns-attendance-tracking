@@ -5,8 +5,14 @@ const { getDailySummary } = require('./merge');
 const REPORT_LINES = [
   { key: 'BTY_HQ', label: 'Bty HQ' },
   { key: 'PL1', label: 'PL1' },
+  { key: 'FU1', label: 'FU1' },
+  { key: 'FU2', label: 'FU2' },
+  { key: 'FU3', label: 'FU3' },
   { key: 'FP1', label: 'FP1' },
   { key: 'PL2', label: 'PL2' },
+  { key: 'FU4', label: 'FU4' },
+  { key: 'FU5', label: 'FU5' },
+  { key: 'FU6', label: 'FU6' },
   { key: 'FP2', label: 'FP2' },
   { key: 'PSTAR', label: 'PSTAR' },
   { key: 'FP_PSTAR', label: 'FP PSTAR' },
@@ -22,11 +28,20 @@ const REPORT_LINES = [
 // (db.editScopeFor), rather than a separate hardcoded permission table.
 // KAH counts toward Bty HQ — both are battery/battalion-level appointments
 // rather than Fire Unit crew, and KAH has no board/slot structure of its own.
+// FU1-6 are broadly RBS-scoped, not restricted to one specific fucomN
+// account — any of the 6 FU Commander accounts (or PC/PS/P2IC) can confirm
+// any of them.
 const LINE_GROUPS = {
   BTY_HQ: ['HQ', 'KAH'],
   PL1: ['RBS'],
+  FU1: ['RBS'],
+  FU2: ['RBS'],
+  FU3: ['RBS'],
   FP1: ['FP'],
   PL2: ['RBS'],
+  FU4: ['RBS'],
+  FU5: ['RBS'],
+  FU6: ['RBS'],
   FP2: ['FP'],
   PSTAR: ['PSTAR'],
   FP_PSTAR: ['FP'],
@@ -66,6 +81,12 @@ function classifyRbsFpBucket(person, sectionsById) {
   return section.platoon === 'Platoon 1' ? 'FP1' : 'FP2';
 }
 
+/** "Fire Unit 3" -> "FU3"; null for anything else (PCP pools, staging, etc). */
+function fuLineForSection(section) {
+  const match = /^Fire Unit (\d)$/.exec((section && section.name) || '');
+  return match ? `FU${match[1]}` : null;
+}
+
 /**
  * Groups every roster row from getDailySummary(date) into the report-line
  * buckets. Shared by the WhatsApp report text and the line-confirmation
@@ -75,6 +96,11 @@ function classifyRbsFpBucket(person, sectionsById) {
  * additionally toward "PSTAR Unassigned" if they haven't yet been placed
  * into one of PSTAR's own Team slots — the two aren't mutually exclusive.
  * KAH counts toward "Bty HQ" — it has no board/slot structure of its own.
+ * An RBS person placed in a real Fire Unit slot additionally counts toward
+ * their specific FU1-6 line, on top of their platoon's PL1/PL2 — same
+ * overlapping-membership pattern as PSTAR/PSTAR Unassigned. Someone
+ * cross-attached to PCP has no specific Fire Unit, so only counts toward
+ * PL1/PL2, not any FU1-6 line.
  */
 function buildReportLineRows(date) {
   const { rows } = getDailySummary(date);
@@ -102,6 +128,11 @@ function buildReportLineRows(date) {
     else if (g === 'RBS' || g === 'FP') {
       const b = bucket.get(r.person.id);
       if (lineRows[b]) lineRows[b].push(r);
+      if (g === 'RBS' && (b === 'PL1' || b === 'PL2')) {
+        const section = sectionsById.get(r.person.outfield_section_id);
+        const fuLine = fuLineForSection(section);
+        if (fuLine) lineRows[fuLine].push(r);
+      }
     }
   }
 

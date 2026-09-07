@@ -315,8 +315,28 @@ const KAH_ROLES = [
   { username: 'p2ic', role: 'editor', telegramLinkCap: 4, editScope: ['RBS', 'HQ', 'DVR'] },
   { username: 'fpcom', role: 'editor', telegramLinkCap: 12, editScope: ['FP'] },
   { username: 'rcom', role: 'editor', telegramLinkCap: 4, editScope: ['PSTAR'] },
-  { username: 'fucom', role: 'editor', telegramLinkCap: 12, editScope: ['RBS', 'DVR'] },
+  // Split from one shared "fucom" into 6 individual FU Commander accounts,
+  // one per RBS Fire Unit — scoped to RBS only (not DVR): drivers stay
+  // under the overall driver count, not fragmented per Fire Unit.
+  { username: 'fucom1', role: 'editor', telegramLinkCap: 4, editScope: ['RBS'] },
+  { username: 'fucom2', role: 'editor', telegramLinkCap: 4, editScope: ['RBS'] },
+  { username: 'fucom3', role: 'editor', telegramLinkCap: 4, editScope: ['RBS'] },
+  { username: 'fucom4', role: 'editor', telegramLinkCap: 4, editScope: ['RBS'] },
+  { username: 'fucom5', role: 'editor', telegramLinkCap: 4, editScope: ['RBS'] },
+  { username: 'fucom6', role: 'editor', telegramLinkCap: 4, editScope: ['RBS'] },
 ];
+
+// Renaming (not deleting) the old shared "fucom" account preserves its
+// existing password, Telegram links, and attendance history under the new
+// fucom1 identity — a plain delete-and-recreate would cascade-delete
+// everything it ever submitted, same risk as the self-account cleanup above.
+{
+  const oldFucom = db.prepare("SELECT 1 FROM users WHERE username = 'fucom'").get();
+  const fucom1Exists = db.prepare("SELECT 1 FROM users WHERE username = 'fucom1'").get();
+  if (oldFucom && !fucom1Exists) {
+    db.exec("UPDATE users SET username = 'fucom1' WHERE username = 'fucom'");
+  }
+}
 
 function bootstrapKahRoles() {
   const insert = db.prepare(
