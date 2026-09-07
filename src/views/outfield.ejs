@@ -1,5 +1,8 @@
 <%- include('partials/header') %>
-<h1>Outfield Designation</h1>
+<div class="page-head">
+  <h1>Outfield Designation</h1>
+  <a href="/outfield?group=<%= group %>" class="button-link">Refresh</a>
+</div>
 
 <div class="tab-bar">
   <% groups.forEach(g => { %>
