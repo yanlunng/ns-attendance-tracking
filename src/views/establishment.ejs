@@ -80,7 +80,7 @@
         <% } else { %>—<% } %>
       </td>
       <td data-label="Driving Cat">
-        <% if (person.group_code === 'DVR') { %>
+        <% if (drivingCatGroups.includes(person.group_code)) { %>
           <% if (canEdit) { %>
           <form method="post" action="/establishment/<%= person.id %>/driving-cat">
             <input type="hidden" name="returnTab" value="<%= activeTab %>" />

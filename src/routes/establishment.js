@@ -9,6 +9,9 @@ const { importEstablishmentWorkbook } = require('../lib/establishmentImport');
 const router = express.Router();
 const TABS = [...GROUP_CODES, 'UNASSIGNED', 'ALL'];
 const DRIVING_CATS = ['A', 'B', 'C', 'D'];
+// DVR is the main driver pool, but some PSTAR people also drive (not all of
+// them) — extend this list if another group ever needs it too.
+const DRIVING_CAT_GROUPS = ['DVR', 'PSTAR'];
 const uploadTemplate = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 function rosterList() {
@@ -57,6 +60,7 @@ router.get('/establishment', requireLogin, blockSelfRole, (req, res) => {
     importError: req.query.importError || null,
     hqRoleCounts,
     activeRole,
+    drivingCatGroups: DRIVING_CAT_GROUPS,
   });
 });
 
@@ -71,10 +75,16 @@ router.post('/establishment/:id/group', requireEditor, (req, res) => {
 
 // Driving cat is entered manually here (never derived from the NR sheet)
 // and persists across roster re-uploads, unlike group_code — see
-// rosterUpsert.js, which never touches this column. Drivers only.
+// rosterUpsert.js, which never touches this column. Drivers only, which
+// includes some (not all) PSTAR people alongside the main DVR group.
 router.post('/establishment/:id/driving-cat', requireEditor, (req, res) => {
   const value = DRIVING_CATS.includes(req.body.drivingCat) ? req.body.drivingCat : null;
-  db.prepare("UPDATE roster SET driving_cat = ? WHERE id = ? AND group_code = 'DVR'").run(value, req.params.id);
+  const placeholders = DRIVING_CAT_GROUPS.map(() => '?').join(',');
+  db.prepare(`UPDATE roster SET driving_cat = ? WHERE id = ? AND group_code IN (${placeholders})`).run(
+    value,
+    req.params.id,
+    ...DRIVING_CAT_GROUPS
+  );
   res.redirect(`/establishment?group=${encodeURIComponent(req.body.returnTab || 'ALL')}`);
 });
 
