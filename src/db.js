@@ -147,7 +147,34 @@ raw.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_roster_id ON users(roster_
 // Individual per-person "self" accounts were retired — role accounts (BC,
 // BSM, PC, etc.) are enough. Runs on every startup, not just once, so it
 // also enforces the policy against a self account created any other way.
-raw.exec("DELETE FROM users WHERE role = 'self'");
+// Self accounts could submit their own Present/Off/MC via Telegram, so a
+// plain DELETE would cascade-delete that real attendance history — instead,
+// reassign it to the bootstrap admin account first (dropping it only if
+// admin already has a submission for that exact date+person, a rare
+// unique-constraint clash, since that means the status is already captured).
+{
+  const selfUserIds = raw.prepare("SELECT id FROM users WHERE role = 'self'").all().map((u) => u.id);
+  if (selfUserIds.length > 0) {
+    const admin = raw.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1").get();
+    if (admin) {
+      const placeholders = selfUserIds.map(() => '?').join(',');
+      const rows = raw
+        .prepare(`SELECT id, date, roster_id FROM attendance_submissions WHERE user_id IN (${placeholders})`)
+        .all(...selfUserIds);
+      for (const row of rows) {
+        const conflict = raw
+          .prepare('SELECT 1 FROM attendance_submissions WHERE date = ? AND roster_id = ? AND user_id = ?')
+          .get(row.date, row.roster_id, admin.id);
+        if (conflict) {
+          raw.prepare('DELETE FROM attendance_submissions WHERE id = ?').run(row.id);
+        } else {
+          raw.prepare('UPDATE attendance_submissions SET user_id = ? WHERE id = ?').run(admin.id, row.id);
+        }
+      }
+    }
+  }
+  raw.exec("DELETE FROM users WHERE role = 'self'");
+}
 
 // Superseded by the telegram_links table (which supports multiple linked
 // chats per user, needed for KAH role accounts) — drop the old 1:1 column
