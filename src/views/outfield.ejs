@@ -246,24 +246,37 @@
 <% if (group === 'Others') { %>
 <h2>Vehicle Tagging</h2>
 <p class="hint">
-  Which driver(s) are tagged to which vehicle — separate from Outfield Designation's boards, so
-  tagging someone here doesn't move them out of their Fire Unit/Driver slot elsewhere. Not
-  drag-and-drop on purpose — only add/remove through the form below.
+  Which driver(s)/vehicle commander(s) are tagged to which vehicle — separate from Outfield
+  Designation's boards, so tagging someone here doesn't move them out of their Fire Unit/Driver
+  slot elsewhere. A driver can only be tagged to one vehicle at a time (tagging them elsewhere
+  moves them); a vehicle commander can be tagged to more than one. Not drag-and-drop on purpose —
+  only add/remove through the form below.
   <a href="/outfield/vehicles/export">Export to Excel</a>
 </p>
 <% if (vehicleError) { %><p class="error"><%= vehicleError %></p><% } %>
 
 <table class="attendance-table">
-  <thead><tr><th>Vehicle</th><th>Driver(s)</th><% if (canEdit) { %><th></th><% } %></tr></thead>
+  <thead><tr><th>Vehicle Type</th><th>License Plate</th><th>Driver(s)</th><th>Vehicle Commander(s)</th><% if (canEdit) { %><th></th><% } %></tr></thead>
   <tbody>
     <% vehicleTags.forEach(v => { %>
     <tr>
-      <td data-label="Vehicle"><%= v.name %></td>
+      <td data-label="Vehicle Type"><%= v.vehicleType || '' %></td>
+      <td data-label="License Plate"><%= v.licensePlate %></td>
       <td data-label="Driver(s)">
         <% v.drivers.forEach(d => { %>
           <span class="badge badge-leave"><%= d.ref_id || '' %> <%= d.name %></span>
           <% if (canEdit) { %>
           <form method="post" action="/outfield/vehicles/<%= v.id %>/remove-driver/<%= d.id %>" class="inline">
+            <button type="submit" class="link-btn">Remove</button>
+          </form>
+          <% } %>
+        <% }) %>
+      </td>
+      <td data-label="Vehicle Commander(s)">
+        <% v.commanders.forEach(c => { %>
+          <span class="badge badge-leave"><%= c.ref_id || '' %> <%= c.name %></span>
+          <% if (canEdit) { %>
+          <form method="post" action="/outfield/vehicles/<%= v.id %>/remove-commander/<%= c.id %>" class="inline">
             <button type="submit" class="link-btn">Remove</button>
           </form>
           <% } %>
@@ -286,14 +299,26 @@
 <div class="add-exception">
   <form method="post" action="/outfield/vehicles/add" id="vehicle-add-form">
     <div class="search-wrap">
-      <label>Driver (RBS/FP/PSTAR/HQ/DVR) <input type="text" id="vehicle-search-input" placeholder="Type a name…" autocomplete="off" /></label>
+      <label>Person (RBS/FP/PSTAR/HQ/DVR) <input type="text" id="vehicle-search-input" placeholder="Type a name…" autocomplete="off" /></label>
       <input type="hidden" name="rosterId" id="vehicle-selected-roster-id" />
       <div id="vehicle-search-results" class="search-results"></div>
     </div>
-    <label>Vehicle
-      <input type="text" name="vehicleName" list="vehicle-name-options" placeholder="e.g. 5-Tonner 1" required />
-      <datalist id="vehicle-name-options">
-        <% vehicleTags.forEach(v => { %><option value="<%= v.name %>"></option><% }) %>
+    <label>Role
+      <select name="role">
+        <option value="driver">Driver</option>
+        <option value="commander">Vehicle Commander</option>
+      </select>
+    </label>
+    <label>Vehicle Type
+      <input type="text" name="vehicleType" list="vehicle-type-options" placeholder="e.g. 5-Tonner" />
+      <datalist id="vehicle-type-options">
+        <% [...new Set(vehicleTags.map(v => v.vehicleType).filter(Boolean))].forEach(t => { %><option value="<%= t %>"></option><% }) %>
+      </datalist>
+    </label>
+    <label>License Plate
+      <input type="text" name="licensePlate" list="vehicle-plate-options" placeholder="e.g. SBA1234A" required />
+      <datalist id="vehicle-plate-options">
+        <% vehicleTags.forEach(v => { %><option value="<%= v.licensePlate %>"></option><% }) %>
       </datalist>
     </label>
     <button type="submit">Add</button>

@@ -115,6 +115,14 @@ raw.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(vehicle_id, roster_id)
   );
+
+  CREATE TABLE IF NOT EXISTS vehicle_commanders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+    roster_id INTEGER NOT NULL REFERENCES roster(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(vehicle_id, roster_id)
+  );
 `);
 
 // Additive, idempotent migrations for columns introduced after the tables
@@ -141,6 +149,18 @@ addColumnIfMissing('roster', 'driving_cat', 'TEXT');
 addColumnIfMissing('roster', 'vocation_descr', 'TEXT');
 addColumnIfMissing('roster', 'role_tag', 'TEXT');
 addColumnIfMissing('roster', 'role_source', "TEXT NOT NULL DEFAULT 'auto'");
+
+// Vehicle Tagging grew a real license plate + vehicle type instead of a
+// single free-text name — rename in place (this feature never shipped with
+// real data yet) rather than leaving a redundant legacy column around.
+{
+  const cols = raw.prepare('PRAGMA table_info(vehicles)').all();
+  if (cols.some((c) => c.name === 'name') && !cols.some((c) => c.name === 'license_plate')) {
+    raw.exec('ALTER TABLE vehicles RENAME COLUMN name TO license_plate');
+  }
+}
+addColumnIfMissing('vehicles', 'vehicle_type', 'TEXT');
+
 addColumnIfMissing('attendance_submissions', 'off_time_end', 'TEXT');
 addColumnIfMissing('users', 'needs_password', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'must_change_password', 'INTEGER NOT NULL DEFAULT 0');

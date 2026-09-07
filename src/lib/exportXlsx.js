@@ -102,15 +102,32 @@ async function buildVehicleWorkbook(vehicleTags) {
   const sheet = workbook.addWorksheet('Vehicle Tagging');
 
   sheet.columns = [
-    { header: 'Vehicle', key: 'vehicle', width: 22 },
-    { header: 'Driver', key: 'driver', width: 28 },
+    { header: 'Vehicle Type', key: 'vehicleType', width: 16 },
+    { header: 'License Plate', key: 'licensePlate', width: 16 },
+    { header: 'Role', key: 'role', width: 16 },
+    { header: 'Name', key: 'name', width: 28 },
     { header: 'Rank/ID', key: 'ref_id', width: 12 },
   ];
   sheet.getRow(1).font = { bold: true };
 
   for (const vehicle of vehicleTags) {
     for (const driver of vehicle.drivers) {
-      sheet.addRow({ vehicle: vehicle.name, driver: driver.name, ref_id: driver.ref_id || '' });
+      sheet.addRow({
+        vehicleType: vehicle.vehicleType || '',
+        licensePlate: vehicle.licensePlate,
+        role: 'Driver',
+        name: driver.name,
+        ref_id: driver.ref_id || '',
+      });
+    }
+    for (const commander of vehicle.commanders) {
+      sheet.addRow({
+        vehicleType: vehicle.vehicleType || '',
+        licensePlate: vehicle.licensePlate,
+        role: 'Vehicle Commander',
+        name: commander.name,
+        ref_id: commander.ref_id || '',
+      });
     }
   }
 

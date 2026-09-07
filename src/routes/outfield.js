@@ -4,7 +4,7 @@ const db = require('../db');
 const { requireLogin, requireEditor, blockSelfRole } = require('../auth');
 const { getBoard, assignPerson, unassignPerson, eligibleRosterForGroups, OUTFIELD_GROUPS } = require('../lib/outfield');
 const { listKahDesignations, addKahDesignation, removeKahDesignation } = require('../lib/kahDesignations');
-const { listVehicleTags, addVehicleDriver, removeVehicleDriver, removeVehicle } = require('../lib/vehicles');
+const { listVehicleTags, addVehicleDriver, addVehicleCommander, removeVehicleDriver, removeVehicleCommander, removeVehicle } = require('../lib/vehicles');
 const { buildOutfieldTemplateWorkbook, importOutfieldTemplateWorkbook } = require('../lib/outfieldTemplate');
 const { buildVehicleWorkbook } = require('../lib/exportXlsx');
 
@@ -99,18 +99,23 @@ router.post('/outfield/pcp/add', requireEditor, (req, res) => {
 // Vehicle tagging is a plain admin/editor-managed list shown on the Others
 // tab, deliberately separate from the drag/click board mechanics — someone
 // already placed as an RBS/FP Driver keeps their slot; this just records
-// which vehicle(s) they're tagged to alongside it. Adding a name not yet in
-// `vehicles` creates it; removing a vehicle's last driver deletes it too.
+// which vehicle(s) they're tagged to alongside it. A license plate not yet
+// in `vehicles` creates it; removing a vehicle's last driver/commander
+// deletes it too. A driver can only be on one vehicle at a time (tagging
+// them elsewhere moves them); a vehicle commander can command several.
 router.post('/outfield/vehicles/add', requireEditor, (req, res) => {
   const rosterId = Number(req.body.rosterId);
-  const vehicleName = (req.body.vehicleName || '').trim();
+  const licensePlate = (req.body.licensePlate || '').trim();
+  const vehicleType = (req.body.vehicleType || '').trim();
+  const role = req.body.role === 'commander' ? 'commander' : 'driver';
 
-  if (!rosterId || !vehicleName) {
-    return res.redirect('/outfield?group=Others&error=' + encodeURIComponent('Pick a driver and enter a vehicle name.'));
+  if (!rosterId || !licensePlate) {
+    return res.redirect('/outfield?group=Others&error=' + encodeURIComponent('Pick a person and enter a license plate.'));
   }
 
   try {
-    addVehicleDriver(vehicleName, rosterId);
+    if (role === 'commander') addVehicleCommander(licensePlate, vehicleType, rosterId);
+    else addVehicleDriver(licensePlate, vehicleType, rosterId);
     res.redirect('/outfield?group=Others');
   } catch (err) {
     res.redirect('/outfield?group=Others&error=' + encodeURIComponent(err.message));
@@ -119,6 +124,11 @@ router.post('/outfield/vehicles/add', requireEditor, (req, res) => {
 
 router.post('/outfield/vehicles/:vehicleId/remove-driver/:rosterId', requireEditor, (req, res) => {
   removeVehicleDriver(Number(req.params.vehicleId), Number(req.params.rosterId));
+  res.redirect('/outfield?group=Others');
+});
+
+router.post('/outfield/vehicles/:vehicleId/remove-commander/:rosterId', requireEditor, (req, res) => {
+  removeVehicleCommander(Number(req.params.vehicleId), Number(req.params.rosterId));
   res.redirect('/outfield?group=Others');
 });
 
