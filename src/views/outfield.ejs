@@ -3,6 +3,22 @@
   <h1>Outfield Designation</h1>
   <a href="/outfield?group=<%= group %>" class="button-link">Refresh</a>
 </div>
+<script>
+  // Auto-refresh when returning to this tab after being away for a bit —
+  // e.g. cancelling someone's ICT on the Roster page, then switching back
+  // here. Only fires after a real away period (not a quick focus flicker),
+  // so it never interrupts an in-progress drag.
+  (function () {
+    var hiddenAt = null;
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+      } else if (document.visibilityState === 'visible' && hiddenAt && Date.now() - hiddenAt > 5000) {
+        window.location.reload();
+      }
+    });
+  })();
+</script>
 
 <div class="tab-bar">
   <% groups.forEach(g => { %>
