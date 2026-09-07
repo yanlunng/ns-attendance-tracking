@@ -6,6 +6,32 @@
   </form>
 </div>
 
+<h2>Off summary — this cycle (<%= offByPerson.length %>)</h2>
+<p class="hint">
+  Everyone Off across the whole battery and the whole cycle, approved and pending together. Add a
+  date (or several) below to filter to who's off on those specific dates — clear it to see everyone
+  and all their off dates again.
+</p>
+<div class="off-date-filter">
+  <label>Filter to date <input type="date" id="off-date-add" /></label>
+  <button type="button" id="off-date-add-btn">Add date</button>
+  <button type="button" id="off-date-clear" class="link-btn">Clear filter</button>
+  <div id="off-date-chips" class="off-date-chips"></div>
+</div>
+<% if (offByPerson.length === 0) { %>
+  <p class="empty">Nobody's off this cycle.</p>
+<% } else { %>
+<table class="attendance-table" id="off-summary-table">
+  <thead><tr><th>Name</th><th>Rank</th><th>Group</th><th>Off dates</th></tr></thead>
+  <tbody id="off-summary-body"></tbody>
+</table>
+<p class="empty" id="off-summary-empty" style="display:none">Nobody's off on the selected date(s).</p>
+<% } %>
+<script>
+  window.OFF_SUMMARY = <%- JSON.stringify(offByPerson) %>;
+</script>
+<script src="/off-summary.js"></script>
+
 <% if (weekendBlocked) { %>
   <p class="banner-warn">
     <%= date %> is a weekend — no attendance was expected, so there's nothing to summarize. An
@@ -106,29 +132,6 @@
   <a href="/export?date=<%= date %>">Download this summary as Excel</a>
   <% if (isAdmin && (summary.stats.offPending > 0 || summary.stats.outproPending > 0)) { %> · <a href="/approvals">Review pending approvals</a><% } %>
 </p>
-
-<h2>Off today (<%= offSummary.length %>)</h2>
-<p class="hint">Everyone Off across the whole battery for <%= date %>, approved and pending together.</p>
-<% if (offSummary.length === 0) { %>
-  <p class="empty">Nobody's off today.</p>
-<% } else { %>
-<table class="attendance-table">
-  <thead><tr><th>Name</th><th>Rank</th><th>Group</th><th>Period</th><th>Status</th></tr></thead>
-  <tbody>
-    <% offSummary.forEach(o => { %>
-    <tr>
-      <td data-label="Name"><%= o.person.name %></td>
-      <td data-label="Rank"><%= o.person.ref_id || '' %></td>
-      <td data-label="Group"><%= o.person.group_code || '—' %></td>
-      <td data-label="Period"><%= formatOffPeriod(o.offPeriod, o.offTime, o.offTimeEnd) %></td>
-      <td data-label="Status">
-        <span class="badge <%= o.approvalState === 'approved' ? 'badge-present' : 'badge-warn' %>"><%= o.approvalState %></span>
-      </td>
-    </tr>
-    <% }) %>
-  </tbody>
-</table>
-<% } %>
 
 <table class="attendance-table">
   <thead>

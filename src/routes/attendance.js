@@ -10,6 +10,7 @@ const { activeRosterForDate, getPhaseStagger, filterRosterForEditor, getExcluded
 const { submitOne, propagateMcAttachment } = require('../lib/attendanceSubmit');
 const { REPORT_LINES, canConfirmLine, canConfirmAll, buildReportLineRows } = require('../lib/reportLines');
 const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines, unconfirmLine, unconfirmAllLines } = require('../lib/reportConfirmations');
+const { getOffSummary } = require('../lib/offSummary');
 const { formatOffPeriod } = require('../lib/offPeriod');
 
 const router = express.Router();
@@ -95,17 +96,20 @@ function buildPersonnelIndex(summary, lineRows) {
   });
 }
 
-/** Everyone currently Off (approved or pending) that day, across every group in one place. */
-function buildOffSummary(summary) {
-  return summary.rows
-    .filter((row) => row.status === 'off')
-    .map((row) => ({
-      person: row.person,
-      offPeriod: row.offPeriod,
-      offTime: row.offTime,
-      offTimeEnd: row.offTimeEnd,
-      approvalState: row.approvalState,
-    }));
+/** Groups getOffSummary()'s flat rows into one entry per person with all their off dates. */
+function groupOffByPerson(offRows) {
+  const byId = new Map();
+  for (const r of offRows) {
+    if (!byId.has(r.person_id)) {
+      byId.set(r.person_id, { id: r.person_id, name: r.name, rank: r.ref_id || '', group: r.group_code || '', dates: [] });
+    }
+    byId.get(r.person_id).dates.push({
+      date: r.date,
+      period: formatOffPeriod(r.off_period, r.off_time, r.off_time_end),
+      status: r.approval_status,
+    });
+  }
+  return [...byId.values()];
 }
 
 router.get('/attendance', requireLogin, blockSelfRole, (req, res) => {
@@ -288,7 +292,7 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
   const cycle = getCycleRange();
 
   if (!isWorkingDay(date)) {
-    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle, confirmation: null, formatOffPeriod, excluded: [], personnelIndex: [], initialCategory: null, offSummary: [] });
+    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle, confirmation: null, formatOffPeriod, excluded: [], personnelIndex: [], initialCategory: null, offByPerson: groupOffByPerson(getOffSummary()) });
   }
 
   const { getDailySummary } = require('../lib/merge');
@@ -320,7 +324,7 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
     excluded: getExcludedFromStrength(date),
     personnelIndex: buildPersonnelIndex(summary, lineRows),
     initialCategory: PERSONNEL_CATEGORIES.includes(req.query.category) ? req.query.category : null,
-    offSummary: buildOffSummary(summary),
+    offByPerson: groupOffByPerson(getOffSummary()),
   });
 });
 
