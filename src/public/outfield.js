@@ -80,7 +80,29 @@
       .catch(function () { alert('Network error — could not save that move.'); });
   }
 
+  function performUnassign(personId) {
+    return fetch('/outfield/unassign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'personId=' + encodeURIComponent(personId),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res.ok) window.location.reload();
+        else alert(res.error || 'Could not unassign that person.');
+      })
+      .catch(function () { alert('Network error — could not unassign that person.'); });
+  }
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.outfield-card-remove');
+    if (!btn) return;
+    e.preventDefault();
+    performUnassign(btn.getAttribute('data-person-id'));
+  });
+
   document.addEventListener('pointerdown', function (e) {
+    if (e.target.closest('.outfield-card-remove')) return; // let its own click handler run, not drag/select
     var card = e.target.closest('.outfield-card[data-draggable="1"]');
     var zone = !card ? e.target.closest('.outfield-dropzone') : null;
     if (!card && !zone) return;

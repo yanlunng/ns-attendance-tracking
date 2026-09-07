@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const db = require('../db');
 const { requireLogin, requireEditor, blockSelfRole } = require('../auth');
-const { getBoard, assignPerson, eligibleRosterForGroups, OUTFIELD_GROUPS } = require('../lib/outfield');
+const { getBoard, assignPerson, unassignPerson, eligibleRosterForGroups, OUTFIELD_GROUPS } = require('../lib/outfield');
 const { listKahDesignations, addKahDesignation, removeKahDesignation } = require('../lib/kahDesignations');
 const { listVehicleTags, addVehicleDriver, removeVehicleDriver, removeVehicle } = require('../lib/vehicles');
 const { buildOutfieldTemplateWorkbook, importOutfieldTemplateWorkbook } = require('../lib/outfieldTemplate');
@@ -144,6 +144,20 @@ router.post('/outfield/assign', requireEditor, (req, res) => {
 
   try {
     assignPerson(personId, sectionId, slot);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// The explicit "×" on a card — an alternative to dragging someone back to
+// their own group's Unassigned pool.
+router.post('/outfield/unassign', requireEditor, (req, res) => {
+  const personId = Number(req.body.personId);
+  if (!personId) return res.status(400).json({ error: 'Missing personId.' });
+
+  try {
+    unassignPerson(personId);
     res.json({ ok: true });
   } catch (err) {
     res.status(400).json({ error: err.message });

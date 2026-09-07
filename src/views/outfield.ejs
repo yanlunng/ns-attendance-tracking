@@ -160,7 +160,7 @@
               <span class="slot-label"><%= slot %></span>
               <div class="outfield-dropzone outfield-dropzone-slot" data-section-id="<%= section.id %>" data-slot="<%= slot %>">
                 <% if (section.slots[slot]) { %>
-                  <div class="outfield-card<%= section.slots[slot].isOffOutfield ? ' outfield-card-off' : '' %>" <%- canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= section.slots[slot].id %>" data-search-name="<%= section.slots[slot].name %>"><%= section.slots[slot].ref_id || '' %> <%= section.slots[slot].name %><% if (section.slots[slot].isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
+                  <%- include('partials/outfield-card', { p: section.slots[slot], canEdit }) %>
                 <% } %>
               </div>
             </div>
@@ -170,7 +170,7 @@
               <span class="slot-label"><%= slot %></span>
               <div class="outfield-dropzone outfield-dropzone-slot" data-section-id="<%= section.id %>" data-slot="<%= slot %>">
                 <% if (section.slots[slot]) { %>
-                  <div class="outfield-card<%= section.slots[slot].isOffOutfield ? ' outfield-card-off' : '' %>" <%- canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= section.slots[slot].id %>" data-search-name="<%= section.slots[slot].name %>"><%= section.slots[slot].ref_id || '' %> <%= section.slots[slot].name %><% if (section.slots[slot].isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
+                  <%- include('partials/outfield-card', { p: section.slots[slot], canEdit }) %>
                 <% } %>
               </div>
             </div>
@@ -184,7 +184,7 @@
         <h3><%= platoon.pool.name %> (<%= platoon.pool.people.length %>)</h3>
         <div class="outfield-dropzone" data-section-id="<%= platoon.pool.id %>" data-slot="">
           <% platoon.pool.people.forEach(p => { %>
-            <div class="outfield-card<%= p.isOffOutfield ? ' outfield-card-off' : '' %>" <%- canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>" data-search-name="<%= p.name %>"><%= p.ref_id || '' %> <%= p.name %><% if (p.isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
+            <%- include('partials/outfield-card', { p, canEdit }) %>
           <% }) %>
         </div>
       </div>
@@ -198,7 +198,7 @@
         <h3><%= board.ownUnassigned.name %> (<%= board.ownUnassigned.people.length %>)</h3>
         <div class="outfield-dropzone" data-section-id="<%= board.ownUnassigned.id %>" data-slot="">
           <% board.ownUnassigned.people.forEach(p => { %>
-            <div class="outfield-card<%= p.isOffOutfield ? ' outfield-card-off' : '' %>" <%- canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>" data-search-name="<%= p.name %>"><%= p.ref_id || '' %> <%= p.name %><% if (p.isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
+            <%- include('partials/outfield-card', { p, canEdit }) %>
           <% }) %>
         </div>
       </div>
@@ -211,7 +211,7 @@
         <h3><%= board.standby.name %> (<%= board.standby.people.length %>)</h3>
         <div class="outfield-dropzone" data-section-id="<%= board.standby.id %>" data-slot="">
           <% board.standby.people.forEach(p => { %>
-            <div class="outfield-card<%= p.isOffOutfield ? ' outfield-card-off' : '' %>" <%- canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>" data-search-name="<%= p.name %>"><%= p.ref_id || '' %> <%= p.name %><% if (p.isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
+            <%- include('partials/outfield-card', { p, canEdit }) %>
           <% }) %>
         </div>
       </div>
@@ -224,7 +224,7 @@
       <h3>HQ (<%= board.hq.people.length %>)</h3>
       <div class="outfield-dropzone" data-section-id="<%= board.hq.id %>" data-slot="">
         <% board.hq.people.forEach(p => { %>
-          <div class="outfield-card<%= p.isOffOutfield ? ' outfield-card-off' : '' %>" <%- canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>" data-search-name="<%= p.name %>"><%= p.ref_id || '' %> <%= p.name %><% if (p.isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
+          <%- include('partials/outfield-card', { p, canEdit }) %>
         <% }) %>
       </div>
     </div>
@@ -232,7 +232,7 @@
       <h3>DVR (<%= board.dvr.people.length %>)</h3>
       <div class="outfield-dropzone" data-section-id="<%= board.dvr.id %>" data-slot="">
         <% board.dvr.people.forEach(p => { %>
-          <div class="outfield-card<%= p.isOffOutfield ? ' outfield-card-off' : '' %>" <%- canEdit ? 'data-draggable="1"' : '' %> data-person-id="<%= p.id %>" data-search-name="<%= p.name %>"><%= p.ref_id || '' %> <%= p.name %><% if (p.isOffOutfield) { %> <span class="outfield-off-tag">OFF</span><% } %></div>
+          <%- include('partials/outfield-card', { p, canEdit }) %>
         <% }) %>
       </div>
     </div>

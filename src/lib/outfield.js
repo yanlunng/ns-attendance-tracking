@@ -350,6 +350,18 @@ function assignPerson(personId, sectionId, slot) {
   tx();
 }
 
+/**
+ * Returns someone to their own group's Unassigned pool (HQ's for an HQ
+ * person, DVR's for a DVR person, etc.) — the explicit "×" button on a
+ * card, as a more discoverable alternative to dragging them off a slot.
+ */
+function unassignPerson(personId) {
+  const person = db.prepare('SELECT group_code FROM roster WHERE id = ?').get(personId);
+  if (!person) throw new Error('Unknown person.');
+  const target = getOrCreateSection(person.group_code || 'HQ', null, 'Unassigned', 0, true);
+  assignPerson(personId, target.id, null);
+}
+
 // Tabs shown on the Outfield Designation page — deliberately separate from
 // rosterImport's GROUP_CODES (which still includes KAH for roster
 // classification/Battery Establishment purposes). PCP isn't a real roster
@@ -362,4 +374,4 @@ function assignPerson(personId, sectionId, slot) {
 // via lib/kahDesignations.js, not through getBoard/PLATOON_STRUCTURE.
 const OUTFIELD_GROUPS = ['PCP', 'RBS', 'PSTAR', 'FP', 'Others', 'KAH'];
 
-module.exports = { getBoard, assignPerson, eligibleRosterForGroups, OUTFIELD_GROUPS };
+module.exports = { getBoard, assignPerson, unassignPerson, eligibleRosterForGroups, OUTFIELD_GROUPS };
