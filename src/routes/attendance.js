@@ -95,6 +95,19 @@ function buildPersonnelIndex(summary, lineRows) {
   });
 }
 
+/** Everyone currently Off (approved or pending) that day, across every group in one place. */
+function buildOffSummary(summary) {
+  return summary.rows
+    .filter((row) => row.status === 'off')
+    .map((row) => ({
+      person: row.person,
+      offPeriod: row.offPeriod,
+      offTime: row.offTime,
+      offTimeEnd: row.offTimeEnd,
+      approvalState: row.approvalState,
+    }));
+}
+
 router.get('/attendance', requireLogin, blockSelfRole, (req, res) => {
   const date = req.query.date || todayStr();
   const cycle = getCycleRange();
@@ -275,7 +288,7 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
   const cycle = getCycleRange();
 
   if (!isWorkingDay(date)) {
-    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle, confirmation: null, formatOffPeriod, excluded: [], personnelIndex: [], initialCategory: null });
+    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle, confirmation: null, formatOffPeriod, excluded: [], personnelIndex: [], initialCategory: null, offSummary: [] });
   }
 
   const { getDailySummary } = require('../lib/merge');
@@ -307,6 +320,7 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
     excluded: getExcludedFromStrength(date),
     personnelIndex: buildPersonnelIndex(summary, lineRows),
     initialCategory: PERSONNEL_CATEGORIES.includes(req.query.category) ? req.query.category : null,
+    offSummary: buildOffSummary(summary),
   });
 });
 

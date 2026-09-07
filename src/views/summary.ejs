@@ -107,6 +107,29 @@
   <% if (isAdmin && (summary.stats.offPending > 0 || summary.stats.outproPending > 0)) { %> · <a href="/approvals">Review pending approvals</a><% } %>
 </p>
 
+<h2>Off today (<%= offSummary.length %>)</h2>
+<p class="hint">Everyone Off across the whole battery for <%= date %>, approved and pending together.</p>
+<% if (offSummary.length === 0) { %>
+  <p class="empty">Nobody's off today.</p>
+<% } else { %>
+<table class="attendance-table">
+  <thead><tr><th>Name</th><th>Rank</th><th>Group</th><th>Period</th><th>Status</th></tr></thead>
+  <tbody>
+    <% offSummary.forEach(o => { %>
+    <tr>
+      <td data-label="Name"><%= o.person.name %></td>
+      <td data-label="Rank"><%= o.person.ref_id || '' %></td>
+      <td data-label="Group"><%= o.person.group_code || '—' %></td>
+      <td data-label="Period"><%= formatOffPeriod(o.offPeriod, o.offTime, o.offTimeEnd) %></td>
+      <td data-label="Status">
+        <span class="badge <%= o.approvalState === 'approved' ? 'badge-present' : 'badge-warn' %>"><%= o.approvalState %></span>
+      </td>
+    </tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>
+
 <table class="attendance-table">
   <thead>
     <tr>
