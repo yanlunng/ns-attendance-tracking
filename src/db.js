@@ -140,6 +140,7 @@ addColumnIfMissing('roster', 'outfield_slot', 'TEXT');
 addColumnIfMissing('roster', 'driving_cat', 'TEXT');
 addColumnIfMissing('roster', 'vocation_descr', 'TEXT');
 addColumnIfMissing('roster', 'role_tag', 'TEXT');
+addColumnIfMissing('roster', 'role_source', "TEXT NOT NULL DEFAULT 'auto'");
 addColumnIfMissing('attendance_submissions', 'off_time_end', 'TEXT');
 addColumnIfMissing('users', 'needs_password', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'must_change_password', 'INTEGER NOT NULL DEFAULT 0');

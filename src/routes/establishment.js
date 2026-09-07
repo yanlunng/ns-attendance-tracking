@@ -78,6 +78,18 @@ router.post('/establishment/:id/driving-cat', requireEditor, (req, res) => {
   res.redirect(`/establishment?group=${encodeURIComponent(req.body.returnTab || 'ALL')}`);
 });
 
+// Manual override for role_tag — e.g. someone whose Vocation Descr wasn't
+// caught by the auto-detection (or was uploaded before it existed). Marks
+// role_source 'manual' so future roster re-uploads never overwrite it,
+// same protection pattern as a manual group_code override. HQ only.
+router.post('/establishment/:id/role-tag', requireEditor, (req, res) => {
+  const isSignaller = req.body.value === '1';
+  db.prepare(
+    "UPDATE roster SET role_tag = ?, role_source = 'manual' WHERE id = ? AND group_code = 'HQ'"
+  ).run(isSignaller ? 'Signaller' : null, req.params.id);
+  res.redirect(`/establishment?group=${encodeURIComponent(req.body.returnTab || 'ALL')}${req.body.returnRole ? '&role=' + encodeURIComponent(req.body.returnRole) : ''}`);
+});
+
 router.get('/establishment/export', requireLogin, blockSelfRole, async (req, res) => {
   const workbook = await buildEstablishmentWorkbook(rosterList());
   res.setHeader(
