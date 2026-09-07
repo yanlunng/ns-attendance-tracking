@@ -14,9 +14,21 @@ const upsertStmt = db.prepare(`
     off_period = excluded.off_period,
     off_time = excluded.off_time,
     off_time_end = excluded.off_time_end,
-    approval_status = excluded.approval_status,
-    approved_by = NULL,
-    approved_at = NULL,
+    approval_status = CASE
+      WHEN status IS excluded.status AND off_period IS excluded.off_period
+        AND off_time IS excluded.off_time AND off_time_end IS excluded.off_time_end
+      THEN approval_status ELSE excluded.approval_status
+    END,
+    approved_by = CASE
+      WHEN status IS excluded.status AND off_period IS excluded.off_period
+        AND off_time IS excluded.off_time AND off_time_end IS excluded.off_time_end
+      THEN approved_by ELSE NULL
+    END,
+    approved_at = CASE
+      WHEN status IS excluded.status AND off_period IS excluded.off_period
+        AND off_time IS excluded.off_time AND off_time_end IS excluded.off_time_end
+      THEN approved_at ELSE NULL
+    END,
     remarks = excluded.remarks,
     submitted_at = datetime('now')
 `);
@@ -61,7 +73,15 @@ function submitOne({ date, rosterId, submitterId, submitterRole, submitterUserna
   const cleanRemarks = (remarks || '').trim() || null;
 
   upsertStmt.run(date, rosterId, submitterId, status, normOffPeriod, normOffTime, normOffTimeEnd, approvalStatus, cleanRemarks);
-  return { ok: true, approvalStatus };
+
+  // Resubmitting the exact same status/off-details preserves whatever
+  // approval_status was already there instead of resetting it — read back
+  // the actual stored value so callers (e.g. the Telegram confirmation
+  // message) don't report "pending" for something that stayed approved.
+  const stored = db
+    .prepare('SELECT approval_status FROM attendance_submissions WHERE date = ? AND roster_id = ? AND user_id = ?')
+    .get(date, rosterId, submitterId);
+  return { ok: true, approvalStatus: stored.approval_status };
 }
 
 /**
