@@ -93,8 +93,11 @@ function submitOne({ date, rosterId, submitterId, submitterRole, submitterUserna
  * genuinely is on MC for every one of those days, not just "has a file for
  * whichever days someone happened to separately mark" — also creates a new
  * MC entry (with this same attachment) for any working day in the range
- * that has no submission from this submitter at all yet. Never touches a
- * day that already has ANY real status recorded, working or not.
+ * that has no submission from this submitter yet, or that only has the
+ * default "present" (i.e. nobody had actually reported anything for that
+ * day yet — a routine bulk-submit default, not a deliberate status). Never
+ * touches a day that already has a deliberate status recorded (off, outpro,
+ * or a differently-attached mc), working or not.
  */
 function propagateMcAttachment({ attachmentPath, rosterId, userId, fromDate, throughDate }) {
   const tx = db.transaction(() => {
@@ -105,10 +108,15 @@ function propagateMcAttachment({ attachmentPath, rosterId, userId, fromDate, thr
          AND date > ? AND date <= ?`
     ).run(attachmentPath, rosterId, userId, fromDate, throughDate);
 
-    const existingStmt = db.prepare('SELECT 1 FROM attendance_submissions WHERE date = ? AND roster_id = ? AND user_id = ?');
+    const existingStmt = db.prepare('SELECT status FROM attendance_submissions WHERE date = ? AND roster_id = ? AND user_id = ?');
     const insert = db.prepare(
       `INSERT INTO attendance_submissions (date, roster_id, user_id, status, approval_status, attachment_path, submitted_at)
        VALUES (?, ?, ?, 'mc', 'approved', ?, datetime('now'))`
+    );
+    const upgradePresent = db.prepare(
+      `UPDATE attendance_submissions
+       SET status = 'mc', approval_status = 'approved', attachment_path = ?, submitted_at = datetime('now')
+       WHERE date = ? AND roster_id = ? AND user_id = ? AND status = 'present'`
     );
 
     const cursor = new Date(`${fromDate}T00:00:00Z`);
@@ -116,12 +124,13 @@ function propagateMcAttachment({ attachmentPath, rosterId, userId, fromDate, thr
     cursor.setUTCDate(cursor.getUTCDate() + 1);
     while (cursor <= end) {
       const date = cursor.toISOString().slice(0, 10);
-      if (
-        isWorkingDay(date) &&
-        activeRosterForDate(date).some((p) => p.id === rosterId) &&
-        !existingStmt.get(date, rosterId, userId)
-      ) {
-        insert.run(date, rosterId, userId, attachmentPath);
+      if (isWorkingDay(date) && activeRosterForDate(date).some((p) => p.id === rosterId)) {
+        const existing = existingStmt.get(date, rosterId, userId);
+        if (!existing) {
+          insert.run(date, rosterId, userId, attachmentPath);
+        } else if (existing.status === 'present') {
+          upgradePresent.run(attachmentPath, date, rosterId, userId);
+        }
       }
       cursor.setUTCDate(cursor.getUTCDate() + 1);
     }
