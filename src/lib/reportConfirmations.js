@@ -1,5 +1,5 @@
 const db = require('../db');
-const { REPORT_LINES, buildReportLineRows } = require('./reportLines');
+const { buildReportLineRows, activeReportLines } = require('./reportLines');
 
 function getConfirmedLines(date) {
   return new Set(
@@ -9,7 +9,8 @@ function getConfirmedLines(date) {
 
 function isDayFullyConfirmed(date) {
   const confirmed = getConfirmedLines(date);
-  return REPORT_LINES.every(({ key }) => confirmed.has(key));
+  const { lineRows } = buildReportLineRows(date);
+  return activeReportLines(lineRows).every(({ key }) => confirmed.has(key));
 }
 
 /**
@@ -35,9 +36,10 @@ function confirmLine(date, lineKey, userId) {
   ).run(date, lineKey, userId);
 }
 
-/** BC/BSM/B2IC (or any unrestricted account) override: confirms every line for a date at once. */
+/** BC/BSM/B2IC (or any unrestricted account) override: confirms every active line for a date at once. */
 function confirmAllLines(date, userId) {
-  for (const { key } of REPORT_LINES) confirmLine(date, key, userId);
+  const { lineRows } = buildReportLineRows(date);
+  for (const { key } of activeReportLines(lineRows)) confirmLine(date, key, userId);
 }
 
 /**

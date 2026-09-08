@@ -8,7 +8,7 @@ const { isWorkingDay } = require('../lib/workingDays');
 const { getCycleRange } = require('../lib/settings');
 const { activeRosterForDate, getPhaseStagger, filterRosterForEditor, getExcludedFromStrength } = require('../lib/roster');
 const { submitOne, propagateMcAttachment } = require('../lib/attendanceSubmit');
-const { REPORT_LINES, canConfirmLine, canConfirmAll, buildReportLineRows } = require('../lib/reportLines');
+const { REPORT_LINES, canConfirmLine, canConfirmAll, buildReportLineRows, activeReportLines } = require('../lib/reportLines');
 const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines, unconfirmLine, unconfirmAllLines } = require('../lib/reportConfirmations');
 const { getOffSummary } = require('../lib/offSummary');
 const { formatOffPeriod } = require('../lib/offPeriod');
@@ -292,7 +292,7 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
   const cycle = getCycleRange();
 
   if (!isWorkingDay(date)) {
-    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle, confirmation: null, formatOffPeriod, excluded: [], personnelIndex: [], initialCategory: null, offByPerson: groupOffByPerson(getOffSummary()) });
+    return res.render('summary', { summary: null, date, todayStr: todayStr(), weekendBlocked: true, cycle, confirmation: null, formatOffPeriod, excluded: [], personnelIndex: [], initialCategory: null, offByPerson: groupOffByPerson(getOffSummary(date)) });
   }
 
   const { getDailySummary } = require('../lib/merge');
@@ -317,7 +317,9 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
     // FU1-6 nest under their platoon line as a collapsible sub-tree instead
     // of showing as separate top-level rows — same underlying confirmable
     // lines, just organized so they're not visually duplicating PL1/PL2.
-    lines: REPORT_LINES.filter((l) => !l.parentKey).map((l) => ({
+    // Empty pool lines (Standby, Unassigned) are left out entirely — see
+    // activeReportLines.
+    lines: activeReportLines(lineRows).filter((l) => !l.parentKey).map((l) => ({
       ...buildLine(l),
       children: childrenByParent.get(l.key) || [],
     })),
@@ -338,7 +340,7 @@ router.get('/summary', requireLogin, blockSelfRole, (req, res) => {
     excluded: getExcludedFromStrength(date),
     personnelIndex: buildPersonnelIndex(summary, lineRows),
     initialCategory: PERSONNEL_CATEGORIES.includes(req.query.category) ? req.query.category : null,
-    offByPerson: groupOffByPerson(getOffSummary()),
+    offByPerson: groupOffByPerson(getOffSummary(date)),
   });
 });
 

@@ -7,7 +7,7 @@ const { getCycleRange } = require('./settings');
 const { isWorkingDay } = require('./workingDays');
 const { buildWhatsappSummary } = require('./whatsappSummary');
 const { formatOffPeriod } = require('./offPeriod');
-const { REPORT_LINES, canConfirmLine, canConfirmAll } = require('./reportLines');
+const { REPORT_LINES, canConfirmLine, canConfirmAll, buildReportLineRows, activeReportLines } = require('./reportLines');
 const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines, unconfirmLine, unconfirmAllLines } = require('./reportConfirmations');
 
 function todayStr() {
@@ -193,9 +193,11 @@ async function excludedCmd(chatId, text) {
 async function sendConfirmationPanel(chatId, user, date) {
   const confirmed = getConfirmedLines(date);
   const fullyConfirmed = isDayFullyConfirmed(date);
+  const { lineRows } = buildReportLineRows(date);
+  const lines = activeReportLines(lineRows);
 
   const buttons = [];
-  for (const { key, label } of REPORT_LINES) {
+  for (const { key, label } of lines) {
     if (!canConfirmLine(user.username, key)) continue;
     const isConfirmed = confirmed.has(key);
     const mark = isConfirmed ? '✅' : '⬜';
@@ -207,7 +209,7 @@ async function sendConfirmationPanel(chatId, user, date) {
 
   const status = fullyConfirmed
     ? `✅ ${date} is fully confirmed.`
-    : `⬜ ${date} — ${confirmed.size}/${REPORT_LINES.length} lines confirmed.`;
+    : `⬜ ${date} — ${confirmed.size}/${lines.length} lines confirmed.`;
 
   if (buttons.length === 0) return telegramApi.sendMessage(chatId, status);
   return telegramApi.sendMessage(chatId, status, telegramApi.inlineKeyboard(buttons));

@@ -2,12 +2,15 @@ const db = require('../db');
 const { getCycleRange } = require('./settings');
 
 /**
- * Every Off entry (approved or pending) across the whole cycle, not just
- * one date — one row per submission, so the same person shows up once per
- * day they're off. Rejected submissions are excluded (never actually off).
+ * Every upcoming Off entry (approved or pending) from `fromDate` through the
+ * end of the cycle — one row per submission, so the same person shows up
+ * once per day they're off. Rejected submissions are excluded (never
+ * actually off). Deliberately excludes anything before `fromDate`: once
+ * you've moved on to viewing a later date's summary, an Off that already
+ * happened isn't useful to keep surfacing here.
  */
-function getOffSummary() {
-  const { start, end } = getCycleRange();
+function getOffSummary(fromDate) {
+  const { end } = getCycleRange();
 
   return db
     .prepare(
@@ -19,7 +22,7 @@ function getOffSummary() {
          AND s.date >= ? AND s.date <= ?
        ORDER BY s.date, r.name COLLATE NOCASE`
     )
-    .all(start || '0000-01-01', end || '9999-12-31');
+    .all(fromDate, end || '9999-12-31');
 }
 
 module.exports = { getOffSummary };

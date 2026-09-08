@@ -8,6 +8,13 @@ const { getDailySummary } = require('./merge');
 // "PL1: x/y" and "FU1/FU2/FU3: ..." there is redundant with no room to
 // collapse it. They stay as plain flat lines everywhere else (Telegram's
 // confirmation panel, drill-down, confirm permissions).
+//
+// RBS Standby/FP Standby/*_UNASSIGNED carry `onlyIfNonEmpty` — they're pools,
+// not real formations, so confirming them is meaningless when nobody's
+// actually sitting in one. They're left out of the parade-state confirmation
+// list (web table, Telegram panel, and the "fully confirmed" check) entirely
+// on any date where they're empty, and behave like any other line — visible,
+// confirmable, counted — the moment someone's actually in one.
 const REPORT_LINES = [
   { key: 'BTY_HQ', label: 'Bty HQ' },
   { key: 'PL1', label: 'PL1' },
@@ -23,10 +30,11 @@ const REPORT_LINES = [
   { key: 'PSTAR', label: 'PSTAR' },
   { key: 'FP_PSTAR', label: 'FP PSTAR' },
   { key: 'TOS_TECH', label: 'TOs/Tech' },
-  { key: 'STANDBY', label: 'Standby' },
-  { key: 'RBS_UNASSIGNED', label: 'RBS Unassigned' },
-  { key: 'FP_UNASSIGNED', label: 'FP Unassigned' },
-  { key: 'PSTAR_UNASSIGNED', label: 'PSTAR Unassigned' },
+  { key: 'RBS_STANDBY', label: 'RBS Standby', onlyIfNonEmpty: true },
+  { key: 'FP_STANDBY', label: 'FP Standby', onlyIfNonEmpty: true },
+  { key: 'RBS_UNASSIGNED', label: 'RBS Unassigned', onlyIfNonEmpty: true },
+  { key: 'FP_UNASSIGNED', label: 'FP Unassigned', onlyIfNonEmpty: true },
+  { key: 'PSTAR_UNASSIGNED', label: 'PSTAR Unassigned', onlyIfNonEmpty: true },
 ];
 
 // The roster group_code(s) each line is drawn from — used to derive who's
@@ -52,7 +60,8 @@ const LINE_GROUPS = {
   PSTAR: ['PSTAR'],
   FP_PSTAR: ['FP'],
   TOS_TECH: ['DVR'],
-  STANDBY: ['RBS', 'FP'],
+  RBS_STANDBY: ['RBS'],
+  FP_STANDBY: ['FP'],
   RBS_UNASSIGNED: ['RBS'],
   FP_UNASSIGNED: ['FP'],
   PSTAR_UNASSIGNED: ['PSTAR'],
@@ -62,19 +71,19 @@ const LINE_GROUPS = {
  * Classifies an RBS/FP person's current Outfield Designation placement into
  * a parade-state bucket: PL1/PL2 (RBS platoons), FP1/FP2 (FP platoons,
  * excluding their PSTAR sub-team), FP_PSTAR (either platoon's PSTAR
- * sub-team), STANDBY, or RBS_UNASSIGNED/FP_UNASSIGNED (still in the group's
- * own general pool) — mutually exclusive, together covering every RBS/FP
- * person exactly once. Someone cross-attached to PCP still counts toward
- * their own group's PL1/PL2/FP1/FP2 (matching PCP's Platoon 1/2 pool) rather
- * than falling into Unassigned — PCP holds them, but they're still that
- * platoon's strength for parade-state purposes.
+ * sub-team), RBS_STANDBY/FP_STANDBY, or RBS_UNASSIGNED/FP_UNASSIGNED (still
+ * in the group's own general pool) — mutually exclusive, together covering
+ * every RBS/FP person exactly once. Someone cross-attached to PCP still
+ * counts toward their own group's PL1/PL2/FP1/FP2 (matching PCP's Platoon
+ * 1/2 pool) rather than falling into Unassigned — PCP holds them, but
+ * they're still that platoon's strength for parade-state purposes.
  */
 function classifyRbsFpBucket(person, sectionsById) {
   const unassignedKey = person.group_code === 'RBS' ? 'RBS_UNASSIGNED' : 'FP_UNASSIGNED';
   const section = sectionsById.get(person.outfield_section_id);
   if (!section) return unassignedKey;
   if (section.is_staging) {
-    if (section.name === 'Standby') return 'STANDBY';
+    if (section.name === 'Standby') return person.group_code === 'RBS' ? 'RBS_STANDBY' : 'FP_STANDBY';
     if (section.group_code === 'PCP' && section.platoon) {
       const platoon1Key = person.group_code === 'RBS' ? 'PL1' : 'FP1';
       const platoon2Key = person.group_code === 'RBS' ? 'PL2' : 'FP2';
@@ -158,4 +167,15 @@ function canConfirmAll(username) {
   return db.editScopeFor(username) === null;
 }
 
-module.exports = { REPORT_LINES, LINE_GROUPS, buildReportLineRows, canConfirmLine, canConfirmAll };
+/**
+ * The lines that actually need parade-state confirmation on this date —
+ * every real formation, plus any pool line (`onlyIfNonEmpty`: Standby,
+ * Unassigned) that currently has someone in it. An empty pool line simply
+ * isn't part of the parade state for that date, so nobody needs to confirm
+ * it and it doesn't count toward "fully confirmed".
+ */
+function activeReportLines(lineRows) {
+  return REPORT_LINES.filter((l) => !l.onlyIfNonEmpty || (lineRows[l.key] || []).length > 0);
+}
+
+module.exports = { REPORT_LINES, LINE_GROUPS, buildReportLineRows, canConfirmLine, canConfirmAll, activeReportLines };
