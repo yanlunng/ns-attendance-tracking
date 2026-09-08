@@ -3,7 +3,7 @@ const db = require('../db');
 const { requireLogin } = require('../auth');
 const { isWorkingDay } = require('../lib/workingDays');
 const { getDailySummary } = require('../lib/merge');
-const { REPORT_LINES, canConfirmLine } = require('../lib/reportLines');
+const { canConfirmLine, buildReportLineRows, activeReportLines } = require('../lib/reportLines');
 const { getConfirmedLines } = require('../lib/reportConfirmations');
 
 const router = express.Router();
@@ -32,7 +32,8 @@ router.get('/', requireLogin, (req, res) => {
   let unconfirmedLines = [];
   if (workingDay) {
     const confirmedLines = getConfirmedLines(date);
-    unconfirmedLines = REPORT_LINES.filter(
+    const { lineRows } = buildReportLineRows(date);
+    unconfirmedLines = activeReportLines(lineRows).filter(
       ({ key }) => !confirmedLines.has(key) && canConfirmLine(req.session.user.username, key)
     );
   }
