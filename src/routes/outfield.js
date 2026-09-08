@@ -2,25 +2,54 @@ const express = require('express');
 const multer = require('multer');
 const db = require('../db');
 const { requireLogin, requireEditor, blockSelfRole } = require('../auth');
-const { getBoard, assignPerson, unassignPerson, eligibleRosterForGroups, OUTFIELD_GROUPS } = require('../lib/outfield');
+const { getBoard, assignPerson, unassignPerson, eligibleRosterForGroups, pairedSection, OUTFIELD_GROUPS } = require('../lib/outfield');
 const { listKahDesignations, addKahDesignation, removeKahDesignation } = require('../lib/kahDesignations');
 const { listVehicleTags, addVehicleDriver, addVehicleCommander, removeVehicleDriver, removeVehicleCommander, removeVehicle } = require('../lib/vehicles');
+const { listEquipmentForSection, addEquipmentItem, removeEquipmentItem, copyEquipment } = require('../lib/outfieldEquipment');
 const { buildOutfieldTemplateWorkbook, importOutfieldTemplateWorkbook } = require('../lib/outfieldTemplate');
 const { buildVehicleWorkbook } = require('../lib/exportXlsx');
 
 const router = express.Router();
 const uploadTemplate = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
+// The Equipment tab only makes sense for groups with real Fire Unit/Team
+// slot sections (RBS, FP, PSTAR) — PCP's flat pools and HQ/DVR/Others have
+// no such sections, so this returns null for them and the tab stays hidden.
+function buildEquipmentBoard(board) {
+  const sectioned = board.platoons.filter((p) => p.sections);
+  if (sectioned.length === 0) return null;
+
+  return {
+    platoons: sectioned.map((p) => ({
+      name: p.name,
+      sections: p.sections.map((s) => {
+        const paired = pairedSection(s.id);
+        return {
+          id: s.id,
+          name: s.name,
+          items: listEquipmentForSection(s.id),
+          pairedSectionId: paired ? paired.id : null,
+          pairedSectionName: paired ? paired.name : null,
+        };
+      }),
+    })),
+  };
+}
+
 router.get('/outfield', requireLogin, blockSelfRole, (req, res) => {
   const group = OUTFIELD_GROUPS.includes(req.query.group) ? req.query.group : 'RBS';
   const canEdit = ['admin', 'editor'].includes(req.session.user.role);
   const importError = req.query.importError || null;
+  const view = req.query.view === 'equipment' ? 'equipment' : 'crew';
 
   if (group === 'KAH') {
     return res.render('outfield', {
       group,
       groups: OUTFIELD_GROUPS,
       board: null,
+      view,
+      equipmentBoard: null,
+      equipError: null,
       kahDesignations: listKahDesignations(),
       fullRoster: db.prepare('SELECT id, name, ref_id FROM roster WHERE active = 1 ORDER BY name COLLATE NOCASE').all(),
       canEdit,
@@ -39,6 +68,9 @@ router.get('/outfield', requireLogin, blockSelfRole, (req, res) => {
     group,
     groups: OUTFIELD_GROUPS,
     board,
+    view,
+    equipmentBoard: buildEquipmentBoard(board),
+    equipError: view === 'equipment' ? req.query.error || null : null,
     kahDesignations: null,
     fullRoster: null,
     canEdit,
@@ -143,6 +175,45 @@ router.get('/outfield/vehicles/export', requireLogin, blockSelfRole, async (req,
   res.setHeader('Content-Disposition', 'attachment; filename="vehicle_tagging.xlsx"');
   await workbook.xlsx.write(res);
   res.end();
+});
+
+// Equipment tab — serial numbers recorded per Fire Unit/Team section.
+// "group" travels through every form as a hidden field purely to redirect
+// back to the right tab; it plays no role in the write itself.
+router.post('/outfield/equipment/add', requireEditor, (req, res) => {
+  const group = req.body.group;
+  const sectionId = Number(req.body.sectionId);
+  const backTo = `/outfield?group=${encodeURIComponent(group)}&view=equipment`;
+
+  if (!sectionId) return res.redirect(backTo + '&error=' + encodeURIComponent('Unknown section.'));
+
+  try {
+    addEquipmentItem(sectionId, req.body.itemName, req.body.serialNumber);
+    res.redirect(backTo);
+  } catch (err) {
+    res.redirect(backTo + '&error=' + encodeURIComponent(err.message));
+  }
+});
+
+router.post('/outfield/equipment/:id/remove', requireEditor, (req, res) => {
+  removeEquipmentItem(Number(req.params.id));
+  res.redirect(`/outfield?group=${encodeURIComponent(req.body.group)}&view=equipment`);
+});
+
+router.post('/outfield/equipment/copy', requireEditor, (req, res) => {
+  const group = req.body.group;
+  const fromSectionId = Number(req.body.fromSectionId);
+  const toSectionId = Number(req.body.toSectionId);
+  const backTo = `/outfield?group=${encodeURIComponent(group)}&view=equipment`;
+
+  if (!fromSectionId || !toSectionId) return res.redirect(backTo + '&error=' + encodeURIComponent('Unknown section.'));
+
+  try {
+    copyEquipment(fromSectionId, toSectionId);
+    res.redirect(backTo);
+  } catch (err) {
+    res.redirect(backTo + '&error=' + encodeURIComponent(err.message));
+  }
 });
 
 router.post('/outfield/assign', requireEditor, (req, res) => {

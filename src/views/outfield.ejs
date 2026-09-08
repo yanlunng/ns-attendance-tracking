@@ -95,6 +95,73 @@
   <% } %>
 
 <% } else { %>
+<% const showEquipment = view === 'equipment' && !!equipmentBoard; %>
+
+<% if (equipmentBoard) { %>
+<div class="tab-bar sub-tab-bar">
+  <a href="/outfield?group=<%= group %>" class="tab <%= !showEquipment ? 'tab-active' : '' %>">Crew</a>
+  <a href="/outfield?group=<%= group %>&view=equipment" class="tab <%= showEquipment ? 'tab-active' : '' %>">Equipment</a>
+</div>
+<% } %>
+
+<% if (showEquipment) { %>
+<% if (equipError) { %><p class="error"><%= equipError %></p><% } %>
+<p class="hint">
+  Serial numbers recorded per Fire Unit/Team. A Platoon 1 slot and its Platoon 2 counterpart
+  (e.g. Fire Unit 1 and Fire Unit 4) are issued the same equipment — copy one's list into the
+  other instead of retyping it, then remove (&times;) whichever few items are actually different
+  for that unit.
+</p>
+<div class="outfield-board" data-group="<%= group %>">
+  <% equipmentBoard.platoons.forEach(platoon => { %>
+    <h2><%= platoon.name %></h2>
+    <div class="outfield-platoon">
+      <% platoon.sections.forEach(section => { %>
+        <div class="outfield-section-card">
+          <h4><%= section.name %></h4>
+          <table class="attendance-table">
+            <thead><tr><th>Item</th><th>Serial No.</th><% if (canEdit) { %><th></th><% } %></tr></thead>
+            <tbody>
+              <% section.items.forEach(item => { %>
+              <tr>
+                <td data-label="Item"><%= item.item_name %></td>
+                <td data-label="Serial No."><%= item.serial_number %></td>
+                <% if (canEdit) { %>
+                <td>
+                  <form method="post" action="/outfield/equipment/<%= item.id %>/remove" class="inline">
+                    <input type="hidden" name="group" value="<%= group %>" />
+                    <button type="submit" class="link-btn" title="Remove">&times;</button>
+                  </form>
+                </td>
+                <% } %>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+          <% if (section.items.length === 0) { %><p class="empty">No equipment recorded yet.</p><% } %>
+          <% if (canEdit) { %>
+          <form method="post" action="/outfield/equipment/add" class="inline">
+            <input type="hidden" name="group" value="<%= group %>" />
+            <input type="hidden" name="sectionId" value="<%= section.id %>" />
+            <input type="text" name="itemName" placeholder="Item (e.g. Radio Set)" required />
+            <input type="text" name="serialNumber" placeholder="Serial no." required />
+            <button type="submit">Add</button>
+          </form>
+          <% if (section.pairedSectionId) { %>
+          <form method="post" action="/outfield/equipment/copy" class="inline" onsubmit="return confirm('Copy <%= section.pairedSectionName %>\'s equipment list into <%= section.name %>? This replaces <%= section.name %>\'s current list.');">
+            <input type="hidden" name="group" value="<%= group %>" />
+            <input type="hidden" name="fromSectionId" value="<%= section.pairedSectionId %>" />
+            <input type="hidden" name="toSectionId" value="<%= section.id %>" />
+            <button type="submit" class="link-btn">Copy from <%= section.pairedSectionName %></button>
+          </form>
+          <% } %>
+          <% } %>
+        </div>
+      <% }) %>
+    </div>
+  <% }) %>
+</div>
+<% } else { %>
 
 <p class="hint">
   <% if (!board.hasStructure) { %>
@@ -242,6 +309,7 @@
     </div>
   </div>
 </div>
+<% } %>
 
 <% if (group === 'Others') { %>
 <h2>Vehicle Tagging</h2>

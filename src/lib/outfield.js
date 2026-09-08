@@ -362,6 +362,34 @@ function unassignPerson(personId) {
   assignPerson(personId, target.id, null);
 }
 
+/**
+ * The equivalent section in the other platoon, paired by position (Platoon
+ * 1's 1st section with Platoon 2's 1st, etc.) rather than by name — RBS
+ * numbers its Fire Units continuously across platoons (1-3, then 4-6) while
+ * FP's numbering resets per platoon, so position is the only pairing that
+ * works for both. Used to seed one Fire Unit/Team's equipment list from its
+ * counterpart's, since they're issued the same gear. Returns null for groups
+ * without a real two-platoon slot structure (PCP's flat pools) or a section
+ * with no counterpart.
+ */
+function pairedSection(sectionId) {
+  const section = db.prepare('SELECT * FROM outfield_sections WHERE id = ?').get(sectionId);
+  if (!section) return null;
+
+  const structure = PLATOON_STRUCTURE[section.group_code];
+  if (!structure || structure.flatPool || structure.platoons.length !== 2) return null;
+
+  const platoonIndex = structure.platoons.findIndex((p) => p.name === section.platoon);
+  if (platoonIndex === -1) return null;
+
+  const ownList = structure.platoons[platoonIndex].sections;
+  const sectionIndex = ownList.indexOf(section.name);
+  const otherPlatoon = structure.platoons[1 - platoonIndex];
+  if (sectionIndex === -1 || sectionIndex >= otherPlatoon.sections.length) return null;
+
+  return getOrCreateSection(section.group_code, otherPlatoon.name, otherPlatoon.sections[sectionIndex], 0, false);
+}
+
 // Tabs shown on the Outfield Designation page — deliberately separate from
 // rosterImport's GROUP_CODES (which still includes KAH for roster
 // classification/Battery Establishment purposes). PCP isn't a real roster
@@ -374,4 +402,4 @@ function unassignPerson(personId) {
 // via lib/kahDesignations.js, not through getBoard/PLATOON_STRUCTURE.
 const OUTFIELD_GROUPS = ['PCP', 'RBS', 'PSTAR', 'FP', 'Others', 'KAH'];
 
-module.exports = { getBoard, assignPerson, unassignPerson, eligibleRosterForGroups, OUTFIELD_GROUPS };
+module.exports = { getBoard, assignPerson, unassignPerson, eligibleRosterForGroups, pairedSection, OUTFIELD_GROUPS };

@@ -123,6 +123,16 @@ raw.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(vehicle_id, roster_id)
   );
+
+  CREATE TABLE IF NOT EXISTS outfield_equipment (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    section_id INTEGER NOT NULL REFERENCES outfield_sections(id) ON DELETE CASCADE,
+    item_name TEXT NOT NULL,
+    serial_number TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_outfield_equipment_section_id ON outfield_equipment(section_id);
 `);
 
 // Additive, idempotent migrations for columns introduced after the tables
