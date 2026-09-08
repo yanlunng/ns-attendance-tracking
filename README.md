@@ -136,3 +136,9 @@ environment variables (or via a `.env` file) before starting.
 - Roster upload's "Replace" mode deactivates the old roster (soft-delete) so
   historical attendance rows tied to it are preserved; "Append" adds to the
   existing active roster without touching it.
+
+## User guide
+
+`docs/guide/GUIDE.md` (built as `docs/guide/guide.pdf`) is a full walkthrough of every
+screen, role by role, with screenshots. If you add or change a feature, see
+`docs/guide/README.md` for the checklist to keep the guide in sync.

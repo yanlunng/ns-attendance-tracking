@@ -1,6 +1,8 @@
 const express = require('express');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 const db = require('../db');
 const { requireAdmin } = require('../auth');
 const { parseRosterWorkbook } = require('../lib/rosterImport');
@@ -41,6 +43,16 @@ function cyclePageData() {
   };
 }
 
+const guidePath = path.join(__dirname, '..', '..', 'data', 'guide.pdf');
+function guideInfo() {
+  try {
+    const stat = fs.statSync(guidePath);
+    return { uploaded: true, uploadedAt: stat.mtime.toISOString().slice(0, 16).replace('T', ' ') };
+  } catch {
+    return { uploaded: false, uploadedAt: null };
+  }
+}
+
 function renderRosterError(res, message) {
   return res.status(400).render('roster', {
     roster: rosterList(),
@@ -50,6 +62,8 @@ function renderRosterError(res, message) {
     kahAccounts: kahAccountsList(),
     mcThresholdList: getMcThresholdList(),
     today: todayStr(),
+    guide: guideInfo(),
+    guideError: null,
     ...cyclePageData(),
   });
 }
@@ -63,6 +77,8 @@ router.get('/roster', requireAdmin, (req, res) => {
     kahAccounts: kahAccountsList(),
     mcThresholdList: getMcThresholdList(),
     today: todayStr(),
+    guide: guideInfo(),
+    guideError: req.query.guideError || null,
     ...cyclePageData(),
   });
 });

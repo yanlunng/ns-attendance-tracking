@@ -17,6 +17,7 @@ const accountRoutes = require('./routes/account');
 const myAttendanceRoutes = require('./routes/myAttendance');
 const outfieldRoutes = require('./routes/outfield');
 const telegramRoutes = require('./routes/telegram');
+const guideRoutes = require('./routes/guide');
 const telegramApi = require('./lib/telegramApi');
 const { BOT_COMMANDS } = require('./lib/telegramBot');
 
@@ -65,6 +66,7 @@ app.use(accountRoutes);
 app.use(myAttendanceRoutes);
 app.use(outfieldRoutes);
 app.use(telegramRoutes);
+app.use(guideRoutes);
 
 app.use((req, res) => {
   res.status(404).render('error', { message: 'Page not found.' });

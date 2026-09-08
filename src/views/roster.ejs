@@ -42,6 +42,28 @@
 </div>
 
 <div class="upload-box">
+  <h2>User Guide</h2>
+  <p class="hint">
+    The PDF walkthrough everyone sees via the "User Guide" link in the top bar. Re-upload
+    it here whenever a rebuilt copy is ready — it's stored on this server (survives
+    restarts/redeploys) and served to anyone logged in, not just admins.
+  </p>
+  <% if (guideError) { %><p class="error"><%= guideError %></p><% } %>
+  <p>
+    <% if (guide.uploaded) { %>
+      <span class="badge badge-present">Uploaded</span> last updated <%= guide.uploadedAt %> —
+      <a href="/guide" target="_blank" rel="noopener">view current guide</a>
+    <% } else { %>
+      <span class="badge badge-warn">Not uploaded</span>
+    <% } %>
+  </p>
+  <form method="post" action="/guide/upload" enctype="multipart/form-data" class="inline">
+    <input type="file" name="file" accept="application/pdf" required />
+    <button type="submit"><%= guide.uploaded ? 'Replace guide' : 'Upload guide' %></button>
+  </form>
+</div>
+
+<div class="upload-box">
   <h2>Key Appointment Holder passwords</h2>
   <p class="hint">
     Set an initial password for BC, BSM, B2IC, PC, PS, P2IC, FPCom, RCom, or FU Com — whoever logs
