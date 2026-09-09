@@ -216,6 +216,11 @@ async function excludedCmd(chatId, text) {
   );
 }
 
+// FU1-6 live behind a "RBS FU" drill-down instead of the main confirmation
+// list — same nesting the web Summary page uses (collapsed under PL1/PL2),
+// just flattened into one submenu here rather than split per platoon.
+const FU_KEYS = ['FU1', 'FU2', 'FU3', 'FU4', 'FU5', 'FU6'];
+
 async function sendConfirmationPanel(chatId, user, date) {
   const confirmed = getConfirmedLines(date);
   const fullyConfirmed = isDayFullyConfirmed(date);
@@ -223,11 +228,17 @@ async function sendConfirmationPanel(chatId, user, date) {
   const lines = activeReportLines(lineRows);
 
   const buttons = [];
-  for (const { key, label } of lines) {
+  for (const { key, label, parentKey } of lines) {
+    if (parentKey) continue;
     if (!canConfirmLine(user.username, key)) continue;
     const isConfirmed = confirmed.has(key);
     const mark = isConfirmed ? '✅' : '⬜';
     buttons.push([{ text: `${mark} ${label}`, data: `${isConfirmed ? 'unconfirmline' : 'confirmline'}:${date}:${key}` }]);
+  }
+  if (canConfirmLine(user.username, 'FU1')) {
+    const fuConfirmedCount = FU_KEYS.filter((k) => confirmed.has(k)).length;
+    const mark = fuConfirmedCount === FU_KEYS.length ? '✅' : '⬜';
+    buttons.push([{ text: `${mark} RBS FU (${fuConfirmedCount}/${FU_KEYS.length})`, data: `fupanel:${date}` }]);
   }
   if (canConfirmAll(user.username)) {
     buttons.push([{ text: fullyConfirmed ? 'Unconfirm ALL' : 'Confirm ALL', data: `${fullyConfirmed ? 'unconfirmall' : 'confirmall'}:${date}` }]);
@@ -239,6 +250,24 @@ async function sendConfirmationPanel(chatId, user, date) {
 
   if (buttons.length === 0) return telegramApi.sendMessage(chatId, status);
   return telegramApi.sendMessage(chatId, status, telegramApi.inlineKeyboard(buttons));
+}
+
+async function sendFuPanel(chatId, user, date) {
+  const confirmed = getConfirmedLines(date);
+  const buttons = FU_KEYS.filter((key) => canConfirmLine(user.username, key)).map((key) => {
+    const label = (REPORT_LINES.find((l) => l.key === key) || {}).label || key;
+    const isConfirmed = confirmed.has(key);
+    const mark = isConfirmed ? '✅' : '⬜';
+    return [{ text: `${mark} ${label}`, data: `${isConfirmed ? 'unconfirmline' : 'confirmline'}:${date}:${key}` }];
+  });
+  buttons.push([{ text: '◀ Back', data: `mainpanel:${date}` }]);
+
+  const confirmedCount = FU_KEYS.filter((k) => confirmed.has(k)).length;
+  return telegramApi.sendMessage(
+    chatId,
+    `RBS Fire Units for ${date} — ${confirmedCount}/${FU_KEYS.length} confirmed.`,
+    telegramApi.inlineKeyboard(buttons)
+  );
 }
 
 async function proceedAfterDate(chatId, user, date) {
@@ -428,7 +457,7 @@ async function handleCallback(callbackQuery) {
     confirmLine(date, lineKey, user.id);
     const label = (REPORT_LINES.find((l) => l.key === lineKey) || {}).label || lineKey;
     await telegramApi.sendMessage(chatId, `Confirmed ${label} for ${date} — anyone unreported in it is now marked Present.`);
-    return sendConfirmationPanel(chatId, user, date);
+    return FU_KEYS.includes(lineKey) ? sendFuPanel(chatId, user, date) : sendConfirmationPanel(chatId, user, date);
   }
 
   if (kind === 'unconfirmline') {
@@ -439,6 +468,16 @@ async function handleCallback(callbackQuery) {
     unconfirmLine(date, lineKey);
     const label = (REPORT_LINES.find((l) => l.key === lineKey) || {}).label || lineKey;
     await telegramApi.sendMessage(chatId, `Unconfirmed ${label} for ${date}.`);
+    return FU_KEYS.includes(lineKey) ? sendFuPanel(chatId, user, date) : sendConfirmationPanel(chatId, user, date);
+  }
+
+  if (kind === 'fupanel') {
+    const [, date] = parts;
+    return sendFuPanel(chatId, user, date);
+  }
+
+  if (kind === 'mainpanel') {
+    const [, date] = parts;
     return sendConfirmationPanel(chatId, user, date);
   }
 
