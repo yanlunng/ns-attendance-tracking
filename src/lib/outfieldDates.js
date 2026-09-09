@@ -11,23 +11,23 @@ function otherPlatoon(platoon) {
 
 /**
  * Auto-fills an approved, whole-day Off for everyone currently placed into a
- * Fire Unit or PSTAR sub-team slot (RBS or FP, including FP's own PSTAR
- * sub-team — it has a real Platoon 1/2 assignment same as any FU, so it
- * follows its platoon's going/not-going status like everything else) under
- * the platoon NOT going out on this date. Never overwrites an existing
- * record for that person/date — whatever's already there (a real
- * Off/MC/Outpro, or an earlier auto-fill) always wins. Skips anyone not
- * otherwise eligible for this date (deferred, ICT cancelled, already on
- * approved outpro, etc.). Flagged `auto_outfield_off` so it's excluded from
- * the Summary page's Off summary (see offSummary.js) — this isn't someone
- * asking to be off, just bookkeeping for whoever isn't deploying that day.
+ * Fire Unit / Team / PSTAR sub-team slot (RBS, FP, or PSTAR — including FP's
+ * own cross-attached PSTAR sub-team, which has a real Platoon 1/2 assignment
+ * same as any FU) under the platoon NOT going out on this date. Never
+ * overwrites an existing record for that person/date — whatever's already
+ * there (a real Off/MC/Outpro, or an earlier auto-fill) always wins. Skips
+ * anyone not otherwise eligible for this date (deferred, ICT cancelled,
+ * already on approved outpro, etc.). Flagged `auto_outfield_off` so it's
+ * excluded from the Summary page's Off summary (see offSummary.js) — this
+ * isn't someone asking to be off, just bookkeeping for whoever isn't
+ * deploying that day.
  */
 function fillAutoOffForDate(date, goingPlatoon, submitterId) {
   const notGoing = otherPlatoon(goingPlatoon);
   const sections = db
     .prepare(
       `SELECT id FROM outfield_sections
-       WHERE group_code IN ('RBS', 'FP') AND platoon = ? AND is_staging = 0`
+       WHERE group_code IN ('RBS', 'FP', 'PSTAR') AND platoon = ? AND is_staging = 0`
     )
     .all(notGoing);
   if (sections.length === 0) return;

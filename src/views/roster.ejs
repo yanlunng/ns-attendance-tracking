@@ -115,12 +115,13 @@
 <div class="upload-box">
   <h2>Outfield exercise dates</h2>
   <p class="hint">
-    Each outfield date is a single day where one platoon (RBS + FP together, excluding FP's PSTAR
-    sub-team) goes out to the field — the other platoon is automatically marked Off (approved,
-    no review needed) for that date, unless they already have a real status recorded for it, which
-    always wins. On the Outfield Designation board, anyone with an <strong>approved</strong> Off or
-    MC on any of these dates stays visible in their slot/pool but is dimmed and can't be dragged
-    into a Fire Unit slot. Add as many dates as needed.
+    Each outfield date is a single day where one platoon (RBS, FP, and PSTAR together) goes out to
+    the field — everyone in the other platoon's Fire Unit / Team / PSTAR sub-team slots is
+    automatically marked Off for that date (bookkeeping only — it won't show up in the Off summary),
+    unless they already have a real status recorded for it, which always wins. On the Outfield
+    Designation board, anyone with a genuine <strong>approved</strong> Off or MC (not that automatic
+    bookkeeping one) stays visible in their slot/pool but is dimmed and can't be dragged into a slot.
+    Add as many dates as needed.
   </p>
   <% if (outfieldDates.length > 0) { %>
     <table class="attendance-table">
