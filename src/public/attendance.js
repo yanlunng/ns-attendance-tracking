@@ -1,6 +1,7 @@
 (function () {
   var roster = window.ROSTER || [];
-  var exceptionIds = new Set(window.INITIAL_EXCEPTION_IDS || []);
+  var initialExceptionIds = new Set(window.INITIAL_EXCEPTION_IDS || []);
+  var exceptionIds = new Set(initialExceptionIds);
   var rosterById = new Map(roster.map(function (p) { return [p.id, p]; }));
 
   var searchInput = document.getElementById('search-input');
@@ -8,8 +9,8 @@
   var exceptionsBody = document.getElementById('exceptions-body');
   var noExceptionsMsg = document.getElementById('no-exceptions-msg');
   var exceptionsTable = document.getElementById('exceptions-table');
-  var hiddenInputsBox = document.getElementById('present-hidden-inputs');
   var presentCountHint = document.getElementById('present-count-hint');
+  var form = document.getElementById('attendance-form');
 
   window.toggleOffDetail = function (statusSelect) {
     var row = statusSelect.closest('tr');
@@ -33,8 +34,8 @@
   };
 
   function updatePresentCount() {
-    var presentCount = window.TOTAL_PEOPLE - exceptionIds.size;
-    presentCountHint.textContent = presentCount + ' of ' + window.TOTAL_PEOPLE + ' default to Present and need no action.';
+    var unmarkedCount = window.TOTAL_PEOPLE - exceptionIds.size;
+    presentCountHint.textContent = unmarkedCount + ' of ' + window.TOTAL_PEOPLE + " aren't marked here — they stay Not Reported until confirmed.";
   }
 
   function escapeHtml(s) {
@@ -71,8 +72,8 @@
     var person = rosterById.get(id);
     if (!person) return;
 
-    var hiddenInput = document.getElementById('present-input-' + id);
-    if (hiddenInput) hiddenInput.remove();
+    var overrideInput = document.getElementById('present-override-' + id);
+    if (overrideInput) overrideInput.remove();
 
     var row = document.createElement('tr');
     row.setAttribute('data-id', id);
@@ -119,14 +120,16 @@
     if (row) row.remove();
     exceptionIds.delete(id);
 
-    var person = rosterById.get(id);
-    if (person) {
+    // Only a person who genuinely had an Off/MC/Outpro record before needs an
+    // explicit override back to Present — for anyone else, just leaving them
+    // untouched keeps them Not Reported, which is already correct.
+    if (initialExceptionIds.has(id)) {
       var hidden = document.createElement('input');
       hidden.type = 'hidden';
       hidden.name = 'status_' + id;
+      hidden.id = 'present-override-' + id;
       hidden.value = 'present';
-      hidden.id = 'present-input-' + id;
-      hiddenInputsBox.appendChild(hidden);
+      form.appendChild(hidden);
     }
 
     if (exceptionIds.size === 0) {

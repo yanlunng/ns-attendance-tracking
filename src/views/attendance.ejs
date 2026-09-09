@@ -26,17 +26,15 @@
   <p class="notice">Saved your attendance report for <%= date %>.</p>
 <% } else if (hasSubmitted) { %>
   <p class="notice">You already saved a report for <%= date %> (last updated <%= lastSubmittedAt %>). Changes below aren't recorded until you save again.</p>
-<% } else if (rows.length > 0) { %>
-  <p class="banner-warn">You haven't saved a report for <%= date %> yet — it won't show up on the Summary page until you click "Save my attendance report" below, even though everyone defaults to Present here.</p>
 <% } %>
 
 <p class="hint">
-  Everyone defaults to <strong>Present</strong> for <strong><%= date %></strong>. Search below to
-  flag anyone who's Off, on MC<%= canMarkOutpro ? ', or on their 1st day of outpro' : '' %> — you
-  don't need to touch anyone else. Off requests can be dated ahead within this cycle and need
-  admin approval before they count; MC entries can have proof attached later from the Summary
-  page. Your submission is independent; it's merged with everyone else's on the
-  <a href="/summary?date=<%= date %>">Summary</a> page, and disagreements are flagged there.
+  Only mark people who are Off, on MC<%= canMarkOutpro ? ', or on their 1st day of outpro' : '' %>
+  below. Anyone you don't add here is left as-is — they stay <strong>Not Reported</strong> until a
+  "Confirm Line" / "Confirm ALL" action on the <a href="/summary?date=<%= date %>">Summary</a> page
+  marks them Present, so two people saving different exceptions for different people can't
+  overwrite each other. Off requests can be dated ahead within this cycle and need admin approval
+  before they count; MC entries can have proof attached later from the Summary page.
 </p>
 
 <% if (rows.length === 0) { %>
@@ -46,7 +44,6 @@
   </p>
 <% } else {
      const exceptionsInitial = rows.filter(r => r.existing && r.existing.status !== 'present');
-     const presentRows = rows.filter(r => !r.existing || r.existing.status === 'present');
 %>
 <form method="post" action="/attendance" id="attendance-form" enctype="multipart/form-data">
   <input type="hidden" name="date" value="<%= date %>" />
@@ -102,16 +99,10 @@
     </tbody>
   </table>
   <p id="no-exceptions-msg" class="empty" style="<%= exceptionsInitial.length ? 'display:none' : '' %>">
-    Nobody marked Off or MC<%= canMarkOutpro ? ', or Outpro,' : '' %> yet — everyone is Present.
+    Nobody marked Off or MC<%= canMarkOutpro ? ', or Outpro,' : '' %> yet — everyone stays Not Reported until confirmed.
   </p>
 
-  <div id="present-hidden-inputs">
-    <% presentRows.forEach(({ person }) => { %>
-      <input type="hidden" name="status_<%= person.id %>" value="present" id="present-input-<%= person.id %>" />
-    <% }) %>
-  </div>
-
-  <p class="hint" id="present-count-hint"><%= presentRows.length %> of <%= rows.length %> default to Present and need no action.</p>
+  <p class="hint" id="present-count-hint"><%= rows.length - exceptionsInitial.length %> of <%= rows.length %> aren't marked here — they stay Not Reported until confirmed.</p>
 
   <button type="submit">Save my attendance report</button>
 </form>
