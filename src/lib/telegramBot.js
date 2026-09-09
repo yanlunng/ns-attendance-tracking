@@ -9,12 +9,7 @@ const { buildWhatsappSummary } = require('./whatsappSummary');
 const { formatOffPeriod } = require('./offPeriod');
 const { REPORT_LINES, canConfirmLine, canConfirmAll, buildReportLineRows, activeReportLines } = require('./reportLines');
 const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines, unconfirmLine, unconfirmAllLines } = require('./reportConfirmations');
-
-function todayStr() {
-  const d = new Date();
-  const tzOffset = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
-}
+const { todayStr } = require('./today');
 
 function tomorrowStr() {
   const d = new Date(`${todayStr()}T00:00:00Z`);

@@ -5,14 +5,9 @@ const { isWorkingDay } = require('../lib/workingDays');
 const { getDailySummary } = require('../lib/merge');
 const { canConfirmLine, buildReportLineRows, activeReportLines } = require('../lib/reportLines');
 const { getConfirmedLines } = require('../lib/reportConfirmations');
+const { todayStr } = require('../lib/today');
 
 const router = express.Router();
-
-function todayStr() {
-  const d = new Date();
-  const tzOffset = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
-}
 
 // The landing page after login — a role-aware "what can I do here" dashboard
 // instead of dropping straight into Mark Attendance. Self accounts (no

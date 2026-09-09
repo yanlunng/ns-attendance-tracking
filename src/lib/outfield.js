@@ -1,12 +1,7 @@
 const db = require('../db');
+const { todayStr } = require('./today');
 
 const HQ_DVR_GROUPS = ['HQ', 'DVR'];
-
-function todayStr() {
-  const d = new Date();
-  const tzOffset = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
-}
 
 // RBS: Platoon 1 / Platoon 2, each with 3 Fire Units — numbered continuously
 // across both platoons (Platoon 1: FU 1-3, Platoon 2: FU 4-6).

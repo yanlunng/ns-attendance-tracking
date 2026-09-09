@@ -11,16 +11,11 @@ const { getSetting, setSetting, getCountWeekends } = require('../lib/settings');
 const { nextMonday } = require('../lib/workingDays');
 const { listOutfieldDates, upsertOutfieldDate, removeOutfieldDate } = require('../lib/outfieldDates');
 const { getMcThresholdList } = require('../lib/mcSummary');
+const { todayStr } = require('../lib/today');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const KAH_USERNAMES = db.KAH_ROLES.map((r) => r.username);
-
-function todayStr() {
-  const d = new Date();
-  const tzOffset = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
-}
 
 function rosterList() {
   return db.prepare('SELECT * FROM roster WHERE active = 1 ORDER BY name COLLATE NOCASE').all();

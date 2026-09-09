@@ -12,6 +12,7 @@ const { REPORT_LINES, canConfirmLine, canConfirmAll, buildReportLineRows, active
 const { getConfirmedLines, isDayFullyConfirmed, confirmLine, confirmAllLines, unconfirmLine, unconfirmAllLines } = require('../lib/reportConfirmations');
 const { getOffSummary } = require('../lib/offSummary');
 const { formatOffPeriod } = require('../lib/offPeriod');
+const { todayStr } = require('../lib/today');
 
 const router = express.Router();
 
@@ -40,12 +41,6 @@ const uploadBulk = multer({
   }),
   limits: { fileSize: 10 * 1024 * 1024 },
 });
-
-function todayStr() {
-  const d = new Date();
-  const tzOffset = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
-}
 
 // Keys must match summary.stats' field names — the client-side drill-down
 // (public/summary.js) filters this per-person index by whichever one was
