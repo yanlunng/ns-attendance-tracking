@@ -186,7 +186,16 @@
             <%= s.username %>:
             <strong><%= s.status %><% if (s.status === 'off') { %> (<%= formatOffPeriod(s.off_period, s.off_time, s.off_time_end) %>)<% } %></strong>
             <% if (s.status === 'off' || s.status === 'outpro') { %>· <%= s.approval_status %><% } %>
+            <% if (s.approval_status === 'rejected') { %>· <span class="badge badge-warn">rejected</span><% } %>
             <% if (s.remarks) { %> — <%= s.remarks %><% } %>
+            <% if (row.conflict && confirmation.canConfirmAll && s.approval_status !== 'rejected') { %>
+              <form method="post" action="/summary/resolve-conflict" class="resolve-conflict-form">
+                <input type="hidden" name="date" value="<%= date %>" />
+                <input type="hidden" name="rosterId" value="<%= row.person.id %>" />
+                <input type="hidden" name="keepSubmissionId" value="<%= s.id %>" />
+                <button type="submit" class="link-btn">Keep this, reject the rest</button>
+              </form>
+            <% } %>
           </div>
         <% }) %>
       </td>

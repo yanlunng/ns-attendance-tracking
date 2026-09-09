@@ -392,4 +392,38 @@ router.post('/summary/unconfirm-all', requireLogin, blockSelfRole, (req, res) =>
   res.redirect(`/summary?date=${encodeURIComponent(date)}`);
 });
 
+// Two submitters can independently save different statuses for the same
+// person (e.g. covering different groups, or correcting each other's
+// mistake) — getDailySummary() flags that as a conflict instead of guessing.
+// This lets an unrestricted account (BC/BSM/B2IC) pick which submission is
+// the true one; every other live submission for that person/date is marked
+// rejected — same mechanism /approvals already uses, so it's excluded from
+// the merged status/conflict check but still visible in the details list for
+// an audit trail, and doesn't destroy anyone's original entry.
+router.post('/summary/resolve-conflict', requireLogin, blockSelfRole, (req, res) => {
+  const { date, rosterId, keepSubmissionId } = req.body;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
+    return res.status(400).render('error', { message: 'Invalid date.' });
+  }
+  if (!canConfirmAll(req.session.user.username)) {
+    return res.status(403).render('error', { message: 'Only an unrestricted account (e.g. BC/BSM/B2IC) can resolve a conflict.' });
+  }
+  const rid = Number(rosterId);
+  const keepId = Number(keepSubmissionId);
+
+  const liveSubmissionIds = db
+    .prepare("SELECT id FROM attendance_submissions WHERE date = ? AND roster_id = ? AND approval_status != 'rejected'")
+    .all(date, rid)
+    .map((r) => r.id);
+  if (!liveSubmissionIds.includes(keepId)) {
+    return res.status(400).render('error', { message: "That submission isn't part of an active conflict for this person." });
+  }
+
+  db.prepare(
+    "UPDATE attendance_submissions SET approval_status = 'rejected' WHERE date = ? AND roster_id = ? AND approval_status != 'rejected' AND id != ?"
+  ).run(date, rid, keepId);
+
+  res.redirect(`/summary?date=${encodeURIComponent(date)}`);
+});
+
 module.exports = router;
