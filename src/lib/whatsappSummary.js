@@ -23,16 +23,16 @@ function exceptionText(r) {
   return null; // present, or 1st Day Outpro — still counted in strength that day, no exception text
 }
 
-// Custom time-off starting at/after this counts the same as PM off (still
-// there for the morning) — anything starting earlier means they're already
-// gone before the morning muster, so they count the same as AM off.
+// Custom time-off starting strictly after this counts the same as PM off
+// (still there for the morning) — starting at 9am or earlier means they're
+// already gone before/at the morning muster, so they count the same as AM off.
 const MORNING_CUTOFF = '09:00';
 
 function countsTowardMorningStrength(r) {
   if (r.status === 'present' || r.status === 'outpro') return true;
   if (r.status !== 'off') return false;
   if (r.offPeriod === 'PM') return true;
-  if (r.offPeriod === 'TIME') return !!r.offTime && r.offTime >= MORNING_CUTOFF;
+  if (r.offPeriod === 'TIME') return !!r.offTime && r.offTime > MORNING_CUTOFF;
   return false; // AM, FULL
 }
 
