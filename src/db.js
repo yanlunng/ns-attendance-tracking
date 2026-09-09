@@ -173,6 +173,19 @@ addColumnIfMissing('vehicles', 'vehicle_type', 'TEXT');
 
 addColumnIfMissing('attendance_submissions', 'off_time_end', 'TEXT');
 addColumnIfMissing('attendance_submissions', 'auto_outfield_off', 'INTEGER NOT NULL DEFAULT 0');
+
+// Backfills auto-filled "platoon not deployed today" Off rows created
+// before the auto_outfield_off column existed — without this they still
+// read as a genuine Off (dimming everyone on the Outfield Designation
+// board, cluttering the Off summary) exactly like the bug that column was
+// added to fix. Recognizable by the exact remarks text fillAutoOffForDate()
+// always writes, which nothing else produces. Runs on every startup but is
+// self-limiting (WHERE auto_outfield_off = 0 stops matching once tagged).
+raw.exec(`
+  UPDATE attendance_submissions SET auto_outfield_off = 1
+  WHERE auto_outfield_off = 0 AND status = 'off' AND off_period = 'FULL' AND approval_status = 'approved'
+    AND remarks LIKE 'Outfield: % not deployed on %'
+`);
 addColumnIfMissing('users', 'needs_password', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'must_change_password', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'roster_id', 'INTEGER REFERENCES roster(id) ON DELETE CASCADE');
