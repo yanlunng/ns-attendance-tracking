@@ -148,6 +148,30 @@ function dateFromToken(token) {
   return /^\d{4}-\d{2}-\d{2}$/.test(token) ? token : null;
 }
 
+// A big roster with lots of "not reported"/off exceptions can blow well past
+// Telegram's ~4096-char message cap — buildWhatsappSummary() itself never
+// truncates (that silently dropped whichever lines came later, e.g. FP/PSTAR,
+// any time an earlier line like Bty HQ/PL1 was long enough to eat the rest of
+// the budget), so instead split on line boundaries into several messages.
+const TELEGRAM_MESSAGE_LIMIT = 3900;
+
+function splitForTelegram(text, limit = TELEGRAM_MESSAGE_LIMIT) {
+  const lines = text.split('\n');
+  const chunks = [];
+  let current = '';
+  for (const line of lines) {
+    const candidate = current ? `${current}\n${line}` : line;
+    if (current && candidate.length > limit) {
+      chunks.push(current);
+      current = line;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
 async function summaryCmd(chatId, text) {
   const user = getLinkedUser(chatId);
   if (!user) return telegramApi.sendMessage(chatId, "You're not linked yet. Send /link CODE from your account page first.");
@@ -162,7 +186,9 @@ async function summaryCmd(chatId, text) {
   }
 
   const report = buildWhatsappSummary(date);
-  await telegramApi.sendMessage(chatId, report, { parse_mode: undefined });
+  for (const chunk of splitForTelegram(report)) {
+    await telegramApi.sendMessage(chatId, chunk, { parse_mode: undefined });
+  }
   return sendConfirmationPanel(chatId, user, date);
 }
 

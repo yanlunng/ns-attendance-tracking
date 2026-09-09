@@ -28,7 +28,12 @@ function formatLine(label, rows) {
   // A 1st Day Outpro person is still physically at the unit that day (they
   // only drop out of total strength starting the next day, per roster.js's
   // activeRosterForDate) — so they count as present here, not an exception.
-  const present = rows.filter((r) => r.status === 'present' || r.status === 'outpro').length;
+  // Strength is reported as of the morning, so a PM-off person still counts
+  // (they were around for the morning parade) — AM/full-day/custom-time off
+  // don't, since those can't be guaranteed to exclude the morning.
+  const present = rows.filter(
+    (r) => r.status === 'present' || r.status === 'outpro' || (r.status === 'off' && r.offPeriod === 'PM')
+  ).length;
   const exceptions = rows
     .map((r) => {
       const text = exceptionText(r);
@@ -62,12 +67,7 @@ function buildWhatsappSummary(date) {
     );
   }
 
-  let text = lines.join('\n');
-  const LIMIT = 3900; // stay under Telegram's ~4096-char message cap
-  if (text.length > LIMIT) {
-    text = `${text.slice(0, LIMIT)}\n\n[truncated — see the Summary page on the web app for the full list]`;
-  }
-  return text;
+  return lines.join('\n');
 }
 
 module.exports = { buildWhatsappSummary };
