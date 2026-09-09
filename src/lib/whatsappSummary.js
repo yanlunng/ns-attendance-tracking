@@ -14,7 +14,6 @@ function personLabel(person) {
 }
 
 function exceptionText(r) {
-  if (r.unreported) return 'not reported';
   if (r.status === 'off') {
     const period = formatOffPeriod(r.offPeriod, r.offTime, r.offTimeEnd);
     return `Off (${period})${r.approvalState === 'pending' ? ', pending' : ''}`;
@@ -43,13 +42,19 @@ function formatLine(label, rows) {
   // activeRosterForDate) — so they count as present here, not an exception.
   // Strength is reported as of the morning — see countsTowardMorningStrength.
   const present = rows.filter(countsTowardMorningStrength).length;
-  const exceptions = rows
+  // Not-reported people are just a count, not individually named — with
+  // nobody having reported yet (e.g. first thing in the morning), naming
+  // every single one bloats the report for no real information.
+  const unreportedCount = rows.filter((r) => r.unreported).length;
+  const namedExceptions = rows
+    .filter((r) => !r.unreported)
     .map((r) => {
       const text = exceptionText(r);
       return text ? `${personLabel(r.person)} - ${text}` : null;
     })
     .filter(Boolean);
-  const suffix = exceptions.length > 0 ? ` (${exceptions.join(', ')})` : '';
+  const parts = unreportedCount > 0 ? [`${unreportedCount} not reported`, ...namedExceptions] : namedExceptions;
+  const suffix = parts.length > 0 ? ` (${parts.join(', ')})` : '';
   return `${label}: ${present}/${total}${suffix}`;
 }
 
