@@ -1,5 +1,5 @@
 const { formatOffPeriod } = require('./offPeriod');
-const { REPORT_LINES, buildReportLineRows } = require('./reportLines');
+const { buildReportLineRows, activeReportLines } = require('./reportLines');
 
 // Adjust here if the reporting deadline ever changes.
 const DEADLINE_TIME = '11am';
@@ -66,7 +66,9 @@ function buildWhatsappSummary(date) {
     '',
     `To be completed by *${DEADLINE_TIME} today*.`,
     '',
-    ...REPORT_LINES.filter((l) => !l.hideFromText).map(({ key, label }) => formatLine(label, lineRows[key])),
+    // Empty pool lines (Standby, Unassigned) are left out entirely, same as
+    // the confirmation panels — see activeReportLines.
+    ...activeReportLines(lineRows).filter((l) => !l.hideFromText).map(({ key, label }) => formatLine(label, lineRows[key])),
   ];
 
   if (unclassified.length > 0) {
