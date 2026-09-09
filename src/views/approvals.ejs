@@ -42,7 +42,9 @@
 <h2>1st Day Outpro</h2>
 <p class="hint">
   Marking someone outpro excludes them from every day after this date once approved — they stay
-  in the count for the outpro day itself either way.
+  in the count for the outpro day itself either way. Already approved one by mistake? Reject only
+  works here while it's still pending — once approved, undo it from that person's row on the
+  <a href="/summary">Summary</a> page ("Rescind") instead.
 </p>
 <% if (pendingOutpro.length === 0) { %>
   <p class="empty">Nothing pending.</p>

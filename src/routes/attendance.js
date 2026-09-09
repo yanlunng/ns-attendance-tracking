@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const db = require('../db');
-const { requireLogin, blockSelfRole } = require('../auth');
+const { requireLogin, requireAdmin, blockSelfRole } = require('../auth');
 const { isWorkingDay } = require('../lib/workingDays');
 const { getCycleRange } = require('../lib/settings');
 const { activeRosterForDate, getPhaseStagger, filterRosterForEditor, getExcludedFromStrength } = require('../lib/roster');
@@ -423,6 +423,27 @@ router.post('/summary/resolve-conflict', requireLogin, blockSelfRole, (req, res)
     "UPDATE attendance_submissions SET approval_status = 'rejected' WHERE date = ? AND roster_id = ? AND approval_status != 'rejected' AND id != ?"
   ).run(date, rid, keepId);
 
+  res.redirect(`/summary?date=${encodeURIComponent(date)}`);
+});
+
+// An approved 1st Day Outpro has no "undo" anywhere once it's past the
+// pending stage /approvals handles — roster.js/outfield.js treat ANY
+// approved outpro submission, ever, as a permanent exclusion, so simply
+// re-marking the person Present on a later date (or from a different
+// account, leaving the original row untouched) never actually clears it.
+// This lets an admin explicitly reject every live outpro submission for
+// that person/date, the same way /approvals rejection works, so they're
+// eligible again — for Outfield Designation on next load, and for the
+// roster/strength count from here on.
+router.post('/summary/rescind-outpro', requireAdmin, (req, res) => {
+  const { date, rosterId } = req.body;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
+    return res.status(400).render('error', { message: 'Invalid date.' });
+  }
+  const rid = Number(rosterId);
+  db.prepare(
+    "UPDATE attendance_submissions SET approval_status = 'rejected', approved_by = ?, approved_at = datetime('now') WHERE date = ? AND roster_id = ? AND status = 'outpro' AND approval_status != 'rejected'"
+  ).run(req.session.user.id, date, rid);
   res.redirect(`/summary?date=${encodeURIComponent(date)}`);
 });
 

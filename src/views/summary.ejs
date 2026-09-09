@@ -176,6 +176,13 @@
         <% } else if (row.status === 'outpro') { %>
           <span class="badge badge-outpro">1st Day Outpro</span>
           <span class="badge <%= row.approvalState === 'approved' ? 'badge-present' : 'badge-warn' %>"><%= row.approvalState %></span>
+          <% if (isAdmin && row.approvalState === 'approved') { %>
+            <form method="post" action="/summary/rescind-outpro" class="inline">
+              <input type="hidden" name="date" value="<%= date %>" />
+              <input type="hidden" name="rosterId" value="<%= row.person.id %>" />
+              <button type="submit" class="link-btn">Rescind</button>
+            </form>
+          <% } %>
         <% } else { %>
           <span class="badge badge-<%= row.status %>"><%= row.status %></span>
         <% } %>
