@@ -23,17 +23,26 @@ function exceptionText(r) {
   return null; // present, or 1st Day Outpro — still counted in strength that day, no exception text
 }
 
+// Custom time-off starting at/after this counts the same as AM off (out of
+// the morning strength) — anything starting earlier means they're back
+// before the morning muster, so they count the same as PM off.
+const MORNING_CUTOFF = '09:00';
+
+function countsTowardMorningStrength(r) {
+  if (r.status === 'present' || r.status === 'outpro') return true;
+  if (r.status !== 'off') return false;
+  if (r.offPeriod === 'PM') return true;
+  if (r.offPeriod === 'TIME') return !!r.offTime && r.offTime < MORNING_CUTOFF;
+  return false; // AM, FULL
+}
+
 function formatLine(label, rows) {
   const total = rows.length;
   // A 1st Day Outpro person is still physically at the unit that day (they
   // only drop out of total strength starting the next day, per roster.js's
   // activeRosterForDate) — so they count as present here, not an exception.
-  // Strength is reported as of the morning, so a PM-off person still counts
-  // (they were around for the morning parade) — AM/full-day/custom-time off
-  // don't, since those can't be guaranteed to exclude the morning.
-  const present = rows.filter(
-    (r) => r.status === 'present' || r.status === 'outpro' || (r.status === 'off' && r.offPeriod === 'PM')
-  ).length;
+  // Strength is reported as of the morning — see countsTowardMorningStrength.
+  const present = rows.filter(countsTowardMorningStrength).length;
   const exceptions = rows
     .map((r) => {
       const text = exceptionText(r);
