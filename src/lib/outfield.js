@@ -109,7 +109,10 @@ function ensureGroupStructure(groupCode) {
  * any of the configured outfield dates. Used only to flag them on the board
  * (dimmed, not draggable into a real slot) — they still appear normally
  * everywhere else, per the exercise being multi-date with different platoons
- * going each time.
+ * going each time. Excludes the auto-filled "platoon not deployed today" Off
+ * (see outfieldDates.js) — that's expected on whichever date isn't someone's
+ * own, not a real conflict, and would otherwise dim almost the entire RBS/FP
+ * roster once dates for both platoons exist.
  */
 function getConfirmedAbsentIds() {
   const dates = db.prepare('SELECT date FROM outfield_dates').all().map((d) => d.date);
@@ -119,7 +122,8 @@ function getConfirmedAbsentIds() {
   const rows = db
     .prepare(
       `SELECT DISTINCT roster_id FROM attendance_submissions
-       WHERE status IN ('off', 'mc') AND approval_status = 'approved' AND date IN (${placeholders})`
+       WHERE status IN ('off', 'mc') AND approval_status = 'approved' AND auto_outfield_off = 0
+         AND date IN (${placeholders})`
     )
     .all(...dates);
   return new Set(rows.map((r) => r.roster_id));

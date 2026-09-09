@@ -172,6 +172,7 @@ addColumnIfMissing('roster', 'role_source', "TEXT NOT NULL DEFAULT 'auto'");
 addColumnIfMissing('vehicles', 'vehicle_type', 'TEXT');
 
 addColumnIfMissing('attendance_submissions', 'off_time_end', 'TEXT');
+addColumnIfMissing('attendance_submissions', 'auto_outfield_off', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'needs_password', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'must_change_password', 'INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('users', 'roster_id', 'INTEGER REFERENCES roster(id) ON DELETE CASCADE');
