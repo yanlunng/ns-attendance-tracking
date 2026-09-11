@@ -340,10 +340,20 @@ async function handleOffTimeEndInput(chatId, user, session, text) {
   return finalizeSubmission(chatId, user, { ...session.data, offTimeEnd: end });
 }
 
-async function handleMcDetail(chatId, user, session, text, photo) {
+async function handleMcDetail(chatId, user, session, text, photo, document) {
   if (photo && photo.length > 0) {
     // Telegram sends multiple resolutions; the last is the largest.
     return finalizeSubmission(chatId, user, { ...session.data, pendingPhotoFileId: photo[photo.length - 1].file_id });
+  }
+  // MC certs are frequently shared as PDFs, which Telegram delivers as a
+  // "document" message, not a "photo" — needs its own file_id + name so the
+  // saved attachment keeps the right extension instead of assuming a JPEG.
+  if (document) {
+    return finalizeSubmission(chatId, user, {
+      ...session.data,
+      pendingPhotoFileId: document.file_id,
+      pendingFileName: document.file_name,
+    });
   }
   const remarks = text.trim();
   if (remarks.toLowerCase() === 'skip') return finalizeSubmission(chatId, user, session.data);
@@ -370,7 +380,7 @@ async function finalizeSubmission(chatId, user, data) {
   }
 
   if (data.pendingPhotoFileId) {
-    await attachMcPhoto(data.date, data.rosterId, user.id, data.pendingPhotoFileId);
+    await attachMcPhoto(data.date, data.rosterId, user.id, data.pendingPhotoFileId, data.pendingFileName);
   }
 
   clearSession(chatId);
@@ -381,7 +391,7 @@ async function finalizeSubmission(chatId, user, data) {
   return telegramApi.sendMessage(chatId, `Saved: <b>${data.personName}</b>, ${data.date} — ${statusLine}.`);
 }
 
-async function attachMcPhoto(date, rosterId, submitterId, fileId) {
+async function attachMcPhoto(date, rosterId, submitterId, fileId, fileName) {
   const path = require('path');
   const fs = require('fs');
   const submission = db
@@ -391,7 +401,10 @@ async function attachMcPhoto(date, rosterId, submitterId, fileId) {
 
   const attachmentsDir = path.join(__dirname, '..', '..', 'data', 'attachments');
   if (!fs.existsSync(attachmentsDir)) fs.mkdirSync(attachmentsDir, { recursive: true });
-  const destPath = path.join(attachmentsDir, `${submission.id}-${Date.now()}.jpg`);
+  // A document (e.g. a PDF MC cert) carries its own extension; a photo has
+  // none to go by, so it's always a compressed JPEG from Telegram.
+  const ext = fileName && path.extname(fileName) ? path.extname(fileName) : '.jpg';
+  const destPath = path.join(attachmentsDir, `${submission.id}-${Date.now()}${ext}`);
   await telegramApi.downloadFile(fileId, destPath);
   db.prepare('UPDATE attendance_submissions SET attachment_path = ? WHERE id = ?').run(destPath, submission.id);
 }
@@ -426,7 +439,7 @@ async function handleMessage(message) {
     case 'awaiting_off_time_end':
       return handleOffTimeEndInput(chatId, user, session, text);
     case 'awaiting_mc_detail':
-      return handleMcDetail(chatId, user, session, text, message.photo);
+      return handleMcDetail(chatId, user, session, text, message.photo, message.document);
     default:
       return telegramApi.sendMessage(chatId, 'Send /mark to start marking attendance.');
   }
