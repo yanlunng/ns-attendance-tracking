@@ -46,8 +46,21 @@ function formatLine(label, rows) {
   // nobody having reported yet (e.g. first thing in the morning), naming
   // every single one bloats the report for no real information.
   const unreportedCount = rows.filter((r) => r.unreported).length;
-  const namedExceptions = rows
-    .filter((r) => !r.unreported)
+  const reported = rows.filter((r) => !r.unreported);
+
+  // A whole line stood down together for the same reason (e.g. a platoon's
+  // rostered day off) reads far better as one line than as every single
+  // name repeating the identical "Off" reason — this is a deliberate,
+  // planned stand-down, not an outfield absence, so say so explicitly.
+  if (total > 0 && unreportedCount === 0 && reported.every((r) => r.status === 'off')) {
+    const periods = new Set(reported.map((r) => formatOffPeriod(r.offPeriod, r.offTime, r.offTimeEnd)));
+    if (periods.size === 1) {
+      const [period] = periods;
+      return `${label}: ${present}/${total} (All on Off${period ? ` - ${period}` : ''}, not outfield)`;
+    }
+  }
+
+  const namedExceptions = reported
     .map((r) => {
       const text = exceptionText(r);
       return text ? `${personLabel(r.person)} - ${text}` : null;
