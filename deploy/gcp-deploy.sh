@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-PROJECT_ID="${PROJECT_ID:?Set PROJECT_ID, e.g. export PROJECT_ID=my-gcp-project}"
+PROJECT_ID="${PROJECT_ID:-project-01854889-21dc-4d76-bdd}"
 REGION="${REGION:-us-central1}"
 ZONE="${ZONE:-us-central1-a}"
 VM_NAME="${VM_NAME:-attendance-app}"
