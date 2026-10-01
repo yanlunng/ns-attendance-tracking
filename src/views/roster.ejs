@@ -7,6 +7,9 @@
     Imported <%= imported %> people.<% if (removed) { %> Removed <%= removed %> people no longer in the sheet (their attendance history was removed with them).<% } %>
   </p>
 <% } %>
+<% if (restored) { %>
+  <p class="notice">Restored the previous export's roster, attendance history, and Outfield Designation setup.</p>
+<% } %>
 
 <div class="upload-box">
   <h2>Upload Excel roster</h2>
@@ -38,6 +41,33 @@
     <label class="inline-label"><input type="radio" name="mode" value="replace" checked /> Replace current roster</label>
     <label class="inline-label"><input type="radio" name="mode" value="append" /> Append to current roster</label>
     <button type="submit">Upload</button>
+  </form>
+</div>
+
+<div class="upload-box">
+  <h2>Export for next ICT / Reset</h2>
+  <p class="hint">
+    Downloads a zip of the current roster, attendance history, and Outfield Designation
+    setup (board layout, KAH designations, vehicles) — keep it so the next ICT can be
+    restored exactly as it was, instead of mapping everything again from scratch. Login
+    accounts (BC/BSM/PC/FU Com etc.) aren't included — those persist on their own and
+    aren't affected by export, purge, or import.
+  </p>
+  <form method="post" action="/roster/export-archive">
+    <label class="inline-label">
+      <input type="checkbox" name="purge" value="1" />
+      Also clear all of this out afterward (recommended once you're done with this ICT)
+    </label>
+    <button type="submit">Export</button>
+  </form>
+  <p class="hint">
+    Restores a previously exported zip — only allowed while the current roster is empty
+    (export, tick the clear-out box above, then import the earlier zip here). Restoring
+    is all-or-nothing: everything in the zip comes back exactly as it was when exported.
+  </p>
+  <form method="post" action="/roster/import-archive" enctype="multipart/form-data" class="inline">
+    <input type="file" name="file" accept=".zip" required />
+    <button type="submit">Import</button>
   </form>
 </div>
 

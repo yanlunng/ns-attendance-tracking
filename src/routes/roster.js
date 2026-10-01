@@ -12,9 +12,11 @@ const { nextMonday } = require('../lib/workingDays');
 const { listOutfieldDates, upsertOutfieldDate, removeOutfieldDate } = require('../lib/outfieldDates');
 const { getMcThresholdList } = require('../lib/mcSummary');
 const { todayStr } = require('../lib/today');
+const { exportArchive, purgeIctData, importArchive } = require('../lib/dataArchive');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadArchive = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 const KAH_USERNAMES = db.KAH_ROLES.map((r) => r.username);
 
 function rosterList() {
@@ -54,6 +56,7 @@ function renderRosterError(res, message) {
     error: message,
     imported: null,
     removed: null,
+    restored: null,
     kahAccounts: kahAccountsList(),
     mcThresholdList: getMcThresholdList(),
     today: todayStr(),
@@ -69,6 +72,7 @@ router.get('/roster', requireAdmin, (req, res) => {
     error: null,
     imported: req.query.imported || null,
     removed: req.query.removed || null,
+    restored: req.query.restored || null,
     kahAccounts: kahAccountsList(),
     mcThresholdList: getMcThresholdList(),
     today: todayStr(),
@@ -121,6 +125,33 @@ router.post('/roster/upload', requireAdmin, upload.single('file'), async (req, r
 router.post('/roster/settings/weekends', requireAdmin, (req, res) => {
   setSetting('count_weekends', req.body.count_weekends === '1' ? '1' : '0');
   res.redirect('/roster');
+});
+
+// Snapshots the whole DB + attachments for continuity into the next ICT —
+// optionally purging the live cycle data afterward (gated by an explicit
+// checkbox, never a silent side effect of exporting). Purging only happens
+// after the export buffer is already built, so a failed/aborted download
+// never loses data.
+router.post('/roster/export-archive', requireAdmin, (req, res) => {
+  try {
+    const buffer = exportArchive();
+    if (req.body.purge === '1') purgeIctData();
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="attendance-export-${todayStr()}.zip"`);
+    res.send(buffer);
+  } catch (err) {
+    renderRosterError(res, `Export failed: ${err.message}`);
+  }
+});
+
+router.post('/roster/import-archive', requireAdmin, uploadArchive.single('file'), (req, res) => {
+  if (!req.file) return renderRosterError(res, 'No archive file uploaded.');
+  try {
+    importArchive(req.file.buffer);
+    res.redirect('/roster?restored=1');
+  } catch (err) {
+    renderRosterError(res, `Import failed: ${err.message}`);
+  }
 });
 
 router.post('/roster/outfield-dates/add', requireAdmin, (req, res) => {
