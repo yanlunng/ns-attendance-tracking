@@ -80,14 +80,28 @@ a persistent disk.
 `deploy/gcp-deploy.sh` automates the whole thing (enable APIs, push the image
 to Artifact Registry, create the VM, open the firewall, run the container).
 Run it from **Google Cloud Shell** (has `gcloud`/`docker` preinstalled) from
-inside this directory:
+inside this directory.
+
+One-time setup: store the admin password (and, if used, the domain and
+Telegram bot token) in GCP Secret Manager so future deploys don't need any
+env vars at all:
 
 ```bash
-export PROJECT_ID=<your-gcp-project-id>
-export SESSION_SECRET=$(openssl rand -hex 32)
-export ADMIN_PASSWORD=<a-strong-password>
+printf '%s' 'a-strong-password' | gcloud secrets create attendance-admin-password --data-file=-
+printf '%s' 'your-subdomain.duckdns.org' | gcloud secrets create attendance-domain --data-file=-
+printf '%s' 'your-telegram-bot-token' | gcloud secrets create attendance-telegram-bot-token --data-file=-
+```
+
+After that, every deploy is just:
+
+```bash
 ./deploy/gcp-deploy.sh
 ```
+
+Exporting an env var of the same name (`ADMIN_PASSWORD`, `DOMAIN`,
+`TELEGRAM_BOT_TOKEN`, `PROJECT_ID`, ...) always overrides the stored secret,
+useful for testing a new value before committing it with
+`gcloud secrets versions add`.
 
 It prints the VM's external IP when done. Re-running it is safe — steps that
 already exist (repo, VM, firewall rule) just get skipped.
@@ -100,12 +114,8 @@ deleting the VM — if you ever recreate the instance, snapshot the disk first
 For HTTPS, put this behind a GCP HTTPS Load Balancer (with a managed
 certificate) pointed at the VM, or let the deploy script do it for you: get a
 domain pointed at the VM's external IP (a free one from DuckDNS works fine —
-no purchase needed) and pass it as `DOMAIN`:
-
-```bash
-export DOMAIN=your-subdomain.duckdns.org   # must already resolve to the VM's IP
-./deploy/gcp-deploy.sh
-```
+no purchase needed) and store it as the `attendance-domain` secret above (or
+`export DOMAIN=...` for a one-off override).
 
 This runs [Caddy](https://caddyserver.com/) as a reverse proxy in front of
 the app, which automatically issues and renews a real Let's Encrypt

@@ -3,9 +3,25 @@
 # Intended to be run from Google Cloud Shell (gcloud + docker preinstalled)
 # from inside the attendance-app project directory.
 #
+# One-time setup: store your secrets in GCP Secret Manager so you never have
+# to re-type/paste them on future deploys:
+#   printf '%s' 'pick-a-strong-password' | gcloud secrets create attendance-admin-password --data-file=-
+#   printf '%s' 'ns-attendance.duckdns.org' | gcloud secrets create attendance-domain --data-file=-
+#   printf '%s' 'your-telegram-bot-token' | gcloud secrets create attendance-telegram-bot-token --data-file=-
+# After that, every future deploy is just:
+#   ./deploy/gcp-deploy.sh
+# (An env var of the same name always overrides the stored secret, useful for
+# testing a new value before committing it with `gcloud secrets versions add`.)
+# SESSION_SECRET/TELEGRAM_WEBHOOK_SECRET aren't stored anywhere — they're
+# regenerated fresh on every deploy, which is fine: sessions are in-memory
+# only (already lost on every restart regardless), and the webhook secret is
+# re-registered with Telegram via setWebhook on every boot, so client and
+# server always agree on whatever the latest value is.
+#
 # Usage:
-#   1. Fill in the variables below (or export them before running).
-#   2. ./deploy/gcp-deploy.sh
+#   ./deploy/gcp-deploy.sh
+#   (or override anything above by exporting it first, e.g.
+#    export ADMIN_PASSWORD=... / export DOMAIN=... / export PROJECT_ID=...)
 #
 # Safe to re-run: gcloud commands here are idempotent-ish (create commands
 # will just fail with "already exists" if you re-run after a partial run —
@@ -20,22 +36,36 @@ VM_NAME="${VM_NAME:-attendance-app}"
 REPO_NAME="${REPO_NAME:-attendance-app}"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/app:latest"
 
-SESSION_SECRET="${SESSION_SECRET:?Set SESSION_SECRET to a long random string, e.g. export SESSION_SECRET=$(openssl rand -hex 32)}"
+gcloud config set project "$PROJECT_ID"
+gcloud config set compute/zone "$ZONE"
+
+echo "== Enabling required APIs =="
+gcloud services enable compute.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com
+
+get_secret() {
+  gcloud secrets versions access latest --secret="$1" --project="$PROJECT_ID" 2>/dev/null || true
+}
+
+# Ephemeral by design — see the comment at the top of this file.
+SESSION_SECRET="${SESSION_SECRET:-$(openssl rand -hex 32)}"
 ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:?Set ADMIN_PASSWORD to a strong password}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-$(get_secret attendance-admin-password)}"
+if [[ -z "$ADMIN_PASSWORD" ]]; then
+  echo "No ADMIN_PASSWORD env var and no attendance-admin-password secret found. Either export ADMIN_PASSWORD, or run:" >&2
+  echo "  printf '%s' 'yourpassword' | gcloud secrets create attendance-admin-password --data-file=-" >&2
+  exit 1
+fi
 
-# Optional: set DOMAIN (e.g. export DOMAIN=ns-attendance.duckdns.org, already
-# pointed at this VM's external IP) to front the app with Caddy, which
-# auto-issues and renews a real Let's Encrypt HTTPS certificate. Leave unset
-# to keep serving plain HTTP on the bare IP, same as before.
-DOMAIN="${DOMAIN:-}"
+# Optional: a domain (e.g. ns-attendance.duckdns.org, already pointed at this
+# VM's external IP) to front the app with Caddy, which auto-issues and
+# renews a real Let's Encrypt HTTPS certificate. Leave unset/no stored
+# secret to keep serving plain HTTP on the bare IP, same as before.
+DOMAIN="${DOMAIN:-$(get_secret attendance-domain)}"
 
-# Optional: set TELEGRAM_BOT_TOKEN (from @BotFather) to enable marking
+# Optional: a Telegram bot token (from @BotFather) to enable marking
 # attendance via Telegram. Requires DOMAIN to be set too, since Telegram
-# only delivers webhooks to public HTTPS URLs. TELEGRAM_WEBHOOK_SECRET is
-# auto-generated if left unset — it just has to be unpredictable, no need
-# to choose it yourself.
-TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+# only delivers webhooks to public HTTPS URLs.
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-$(get_secret attendance-telegram-bot-token)}"
 TELEGRAM_WEBHOOK_SECRET="${TELEGRAM_WEBHOOK_SECRET:-}"
 if [[ -n "$TELEGRAM_BOT_TOKEN" && -z "$DOMAIN" ]]; then
   echo "TELEGRAM_BOT_TOKEN is set but DOMAIN is not — Telegram needs a public HTTPS URL. Set DOMAIN too." >&2
@@ -44,12 +74,6 @@ fi
 if [[ -n "$TELEGRAM_BOT_TOKEN" && -z "$TELEGRAM_WEBHOOK_SECRET" ]]; then
   TELEGRAM_WEBHOOK_SECRET="$(openssl rand -hex 24)"
 fi
-
-gcloud config set project "$PROJECT_ID"
-gcloud config set compute/zone "$ZONE"
-
-echo "== Enabling required APIs =="
-gcloud services enable compute.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com
 
 echo "== Creating Artifact Registry repo (ok if it already exists) =="
 gcloud artifacts repositories create "$REPO_NAME" \
