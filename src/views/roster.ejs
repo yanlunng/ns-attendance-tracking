@@ -128,6 +128,20 @@
 </div>
 
 <div class="upload-box">
+  <h2>Cycle attendance tracker</h2>
+  <p class="hint">
+    Downloads one Excel sheet covering the whole cycle (<%= cycleStart %> to <%= cycleEnd %>) —
+    every roster member as a row, every working day as a column. Use Excel's filter on the
+    header row to jump to one person. <span class="badge badge-present">green</span> = present
+    (or 1st Day Outpro), <span class="badge badge-danger">red</span> = Off/MC with the reason in
+    the cell, <span class="badge badge-warn">amber</span> = conflict, grey = not reported yet,
+    light grey "–" = not being tracked that day (deferred, before Main Body Phase, or past an
+    outpro/ICT-cancelled date).
+  </p>
+  <a href="/roster/cycle-attendance-export">Download cycle attendance (Excel)</a>
+</div>
+
+<div class="upload-box">
   <h2>Weekend setting</h2>
   <p class="hint">
     When off, Saturdays/Sundays need no attendance marking anywhere in the app (this is the

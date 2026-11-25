@@ -7,12 +7,13 @@ const db = require('../db');
 const { requireAdmin } = require('../auth');
 const { parseRosterWorkbook } = require('../lib/rosterImport');
 const { upsertRoster } = require('../lib/rosterUpsert');
-const { getSetting, setSetting, getCountWeekends } = require('../lib/settings');
+const { getSetting, setSetting, getCountWeekends, getCycleRange } = require('../lib/settings');
 const { nextMonday } = require('../lib/workingDays');
 const { listOutfieldDates, upsertOutfieldDate, removeOutfieldDate } = require('../lib/outfieldDates');
 const { getMcThresholdList } = require('../lib/mcSummary');
 const { todayStr } = require('../lib/today');
 const { exportArchive, purgeIctData, importArchive } = require('../lib/dataArchive');
+const { buildCycleAttendanceWorkbook } = require('../lib/cycleAttendanceExport');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -125,6 +126,20 @@ router.post('/roster/upload', requireAdmin, upload.single('file'), async (req, r
 router.post('/roster/settings/weekends', requireAdmin, (req, res) => {
   setSetting('count_weekends', req.body.count_weekends === '1' ? '1' : '0');
   res.redirect('/roster');
+});
+
+// One sheet, every roster member x every working day in the current cycle —
+// see cycleAttendanceExport.js for the colour/code legend.
+router.get('/roster/cycle-attendance-export', requireAdmin, async (req, res) => {
+  const { start, end } = getCycleRange();
+  if (!start || !end) {
+    return renderRosterError(res, 'Set the cycle start/end dates (via Upload Excel roster) before exporting cycle attendance.');
+  }
+  const workbook = await buildCycleAttendanceWorkbook(start, end);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="cycle-attendance_${start}_to_${end}.xlsx"`);
+  await workbook.xlsx.write(res);
+  res.end();
 });
 
 // Snapshots the whole DB + attachments for continuity into the next ICT —
